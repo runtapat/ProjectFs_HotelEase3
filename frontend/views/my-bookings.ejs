@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>การจองของฉัน - HotelEase</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <nav>
+        <h2 style="margin: 0;">HotelEase</h2>
+        <a href="/">ย้อนกลับไปหน้าแรก</a>
+    </nav>
+
+    <div class="container" style="max-width: 800px;">
+        <h2 style="color: var(--primary); margin-bottom: 20px;">ประวัติการจองห้องพักของฉัน</h2>
+        
+        <div id="booking-list">
+            <p style="text-align: center;">กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadMyBookings() {
+            // ดึง Token จากเครื่องเพื่อยืนยันตัวตนว่าเป็นใคร
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('กรุณาเข้าสู่ระบบก่อนครับ');
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                // ยิงไปขอข้อมูลการจองของตัวเองที่พอร์ต 3000
+                const res = await axios.get('http://localhost:3000/api/my-bookings', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const list = document.getElementById('booking-list');
+                const bookings = res.data;
+
+                if (bookings.length === 0) {
+                    list.innerHTML = `
+                        <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            <h3>คุณยังไม่มีประวัติการจองห้องพักครับ</h3>
+                            <a href="/" class="btn" style="display: inline-block; margin-top: 10px; text-decoration: none;">ค้นหาห้องพักเลย</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // วนลูปสร้างการ์ดแสดงประวัติการจอง
+                list.innerHTML = bookings.map(b => `
+                    <div class="card" style="display: block; line-height: 1.6;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                            <strong style="color: #666;">หมายเลขการจอง: #${b.booking_id}</strong>
+                            <span style="background: ${b.status === 'Confirmed' ? '#e6f4ea' : '#fce8e6'}; color: ${b.status === 'Confirmed' ? 'green' : 'red'}; padding: 4px 10px; border-radius: 4px; font-weight: bold;">
+                                สถานะ: ${b.status}
+                            </span>
+                        </div>
+                        
+                        <h3 style="margin-top: 0; color: var(--primary);">${b.Room.Hotel.hotel_name}</h3>
+                        <p style="margin: 5px 0;"><strong>ประเภทห้อง:</strong> ${b.Room.room_type}</p>
+                        <p style="margin: 5px 0;"><strong>วันที่เข้าพัก:</strong> ${b.check_in_date} <strong>ถึง</strong> ${b.check_out_date}</p>
+                        
+                        <div style="text-align: right; margin-top: 15px;">
+                            <span style="font-size: 14px; color: #666;">ยอดรวมทั้งสิ้น</span>
+                            <h3 style="color: #d9534f; margin: 0; font-size: 22px;">${b.total_amount.toLocaleString()} บาท</h3>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error(error);
+                alert('เซสชั่นหมดอายุ หรือเกิดข้อผิดพลาด กรุณาเข้าสู่ระบบใหม่ครับ');
+                localStorage.clear();
+                window.location.href = '/login';
+            }
+        }
+
+        // โหลดข้อมูลทันทีที่เปิดหน้านี้
+        loadMyBookings();
+    </script>
+</body>
+</html>

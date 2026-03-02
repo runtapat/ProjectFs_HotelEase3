@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>เข้าสู่ระบบ - HotelEase</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 20px; }
+        .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        .auth-card h2 { text-align: center; color: var(--primary); margin-top: 0; margin-bottom: 25px; font-size: 28px; }
+        .auth-card input { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .auth-card input:focus { outline: none; border-color: var(--primary); }
+        .auth-card button { width: 100%; font-size: 18px; padding: 14px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2 style="margin: 0;">HotelEase</h2>
+        <a href="/">ย้อนกลับหน้าแรก</a>
+    </nav>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h2>เข้าสู่ระบบ</h2>
+            <input type="email" id="email" placeholder="อีเมลของคุณ" required>
+            <input type="password" id="password" placeholder="รหัสผ่าน" required>
+            <button class="btn" onclick="login()">เข้าสู่ระบบ</button>
+            <p style="text-align: center; margin-top: 25px; color: #666;">
+                ยังไม่มีบัญชี? <a href="/register" style="color: var(--primary); font-weight: bold;">สมัครสมาชิกเลย</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        async function login() {
+            try {
+                const res = await axios.post('http://localhost:3000/api/login', {
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                });
+                
+                localStorage.setItem('token', res.data.token);
+                localStorage.setItem('username', res.data.username);
+                localStorage.setItem('role', res.data.role);
+                
+                alert(`ยินดีต้อนรับคุณ ${res.data.username}`);
+                window.location.href = res.data.role === 'พนักงาน' ? '/admin' : '/';
+            } catch (err) {
+                alert('อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+            }
+        }
+    </script>
+</body>
+</html>

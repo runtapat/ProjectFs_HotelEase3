@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>ยืนยันการจอง</title><link rel="stylesheet" href="/style.css"><script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script></head>
+<body>
+    <nav><h2>HotelEase</h2><a href="javascript:history.back()">ย้อนกลับ</a></nav>
+    <div class="form-box" style="max-width: 500px;">
+        <h2 style="color: var(--primary); margin-top:0;">สรุปการจอง</h2>
+        <div id="summary" style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; line-height: 1.8; font-size:16px;"></div>
+        <button class="btn" style="width: 100%; background:#008009; font-size: 18px;" onclick="confirmBook()">ยืนยันและชำระเงิน (ใช้โปรไฟล์สมาชิก)</button>
+    </div>
+
+    <script>
+        const q = new URLSearchParams(window.location.search);
+        const nights = (new Date(q.get('out')) - new Date(q.get('in'))) / (1000 * 60 * 60 * 24);
+        const total = nights * q.get('price');
+
+        document.getElementById('summary').innerHTML = `
+            วันเข้าพัก: <b>${q.get('in')}</b> <br> วันสิ้นสุด: <b>${q.get('out')}</b> <br> จำนวนคืน: <b>${nights}</b> คืน <br>
+            <h3 style="color:#d9534f; margin:10px 0 0 0;">ยอดชำระสุทธิ: ${total.toLocaleString()} บาท</h3>
+        `;
+
+        async function confirmBook() {
+            const token = localStorage.getItem('token');
+            if(!token) return window.location.href = '/login';
+            try {
+                await axios.post('http://localhost:3000/api/book', { room_id: q.get('id'), check_in_date: q.get('in'), check_out_date: q.get('out'), total_amount: total }, { headers: { Authorization: `Bearer ${token}` } });
+                alert('จองสำเร็จ!'); window.location.href = '/';
+            } catch (err) { alert('เกิดข้อผิดพลาดในการจอง'); }
+        }
+    </script>
+</body>
+</html>
