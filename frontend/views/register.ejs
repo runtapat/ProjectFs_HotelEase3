@@ -1,56 +1,40 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>สมัครสมาชิก - HotelEase</title>
-    <link rel="stylesheet" href="/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-        .auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 85vh; padding: 20px; }
-        .auth-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 450px; }
-        .auth-card h2 { text-align: center; color: var(--primary); margin-top: 0; margin-bottom: 25px; font-size: 28px; }
-        .auth-card input { width: 100%; padding: 14px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        .auth-card input:focus { outline: none; border-color: var(--primary); }
-        .auth-card button { width: 100%; font-size: 18px; padding: 14px; border-radius: 6px; }
-    </style>
-</head>
-<body>
-    <nav>
-        <h2 style="margin: 0;">HotelEase</h2>
-        <a href="/">ย้อนกลับหน้าแรก</a>
-    </nav>
+<%- include('partials/header') %>
 
-    <div class="auth-wrapper">
-        <div class="auth-card">
-            <h2>สร้างบัญชีลูกค้าใหม่</h2>
-            <input type="text" id="username" placeholder="ชื่อ-นามสกุล" required>
-            <input type="email" id="email" placeholder="อีเมลของคุณ" required>
-            <input type="password" id="password" placeholder="ตั้งรหัสผ่าน" required>
-            <input type="text" id="contact" placeholder="เบอร์โทรศัพท์ (ไม่บังคับ)">
-            
-            <button class="btn btn-success" onclick="register()">สมัครสมาชิก</button>
-            
-            <p style="text-align: center; margin-top: 25px; color: #666;">
-                มีบัญชีอยู่แล้ว? <a href="/login" style="color: var(--primary); font-weight: bold;">เข้าสู่ระบบ</a>
-            </p>
-        </div>
+<div class="container">
+    <div class="form-box" style="max-width: 500px;">
+        <h2 style="text-align: center; color: var(--primary);">สมัครสมาชิก</h2>
+        <input type="text" id="username" placeholder="ชื่อผู้ใช้งาน">
+        <input type="email" id="email" placeholder="อีเมล">
+        <input type="password" id="pass" placeholder="รหัสผ่าน">
+        <input type="text" id="phone" placeholder="เบอร์โทรศัพท์">
+        <input type="text" id="address" placeholder="ที่อยู่ (ถ้ามี)">
+        <button class="btn" onclick="register()" style="width: 100%;">สร้างบัญชี</button>
+        <p style="text-align: center; margin-top: 15px; font-size: 14px;">
+            มีบัญชีอยู่แล้ว? <a href="/login" style="color: var(--primary); font-weight: bold;">ไปหน้าล็อกอิน</a>
+        </p>
     </div>
+</div>
 
-    <script>
-        async function register() {
-            try {
-                await axios.post('http://localhost:3000/api/register', {
-                    username: document.getElementById('username').value,
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value,
-                    contact_number: document.getElementById('contact').value
-                });
-                alert('สมัครสมาชิกสำเร็จ! ระบบจะพาคุณไปหน้าเข้าสู่ระบบ');
-                window.location.href = '/login';
-            } catch (err) {
-                alert('อีเมลนี้อาจมีผู้ใช้งานแล้ว หรือกรอกข้อมูลไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง');
-            }
+<script>
+    async function register() {
+        const data = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('pass').value,
+            contact_number: document.getElementById('phone').value,
+            address: document.getElementById('address').value
+        };
+
+        if(!data.username || !data.email || !data.password) return showFlash('กรุณากรอกข้อมูลสำคัญให้ครบครับ', 'error');
+
+        try {
+            await axios.post('http://localhost:3000/api/register', data);
+            showFlash('สมัครสมาชิกสำเร็จแล้ว! กรุณาล็อกอินเข้าสู่ระบบ', 'success');
+            setTimeout(() => window.location.href = '/login', 1500);
+        } catch (e) {
+            showFlash(e.response?.data?.error || 'เกิดข้อผิดพลาดในการสมัครสมาชิก', 'error');
         }
-    </script>
-</body>
-</html>
+    }
+</script>
+
+<%- include('partials/footer') %>

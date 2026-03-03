@@ -1,309 +1,315 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <title>Admin and Dashboard</title>
-    <link rel="stylesheet" href="/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-        /* ปรับแต่ง Navbar ให้เหมือนหน้าหลัก */
-        nav { background-color: #003580; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; color: white; }
-        nav h2 { margin: 0; font-size: 24px; }
+<%- include('partials/header') %>
 
-        /* ปรับแต่ง Tab Buttons */
-        .tab-btn { padding: 12px 25px; background: #e0e0e0; border: none; cursor: pointer; font-size: 16px; font-weight: bold; border-radius: 8px 8px 0 0; transition: 0.3s; margin-right: 2px; }
-        .tab-btn.active { background: white; color: #003580; border: 1px solid #ddd; border-bottom: none; }
-        
-        .tab-content { display: none; background: white; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 0 8px 8px 8px; border: 1px solid #ddd; }
+<style>
+    /* 🌟 เก็บสไตล์เดิมของลูกพี่ไว้ทั้งหมด และเสริมส่วน Responsive */
+    .tab-btn { padding: 12px 25px; background: #e0e0e0; border: none; cursor: pointer; font-size: 16px; font-weight: bold; border-radius: 8px 8px 0 0; transition: 0.3s; margin-right: 2px; }
+    .tab-btn.active { background: white; color: var(--primary); border: 1px solid #ddd; border-bottom: none; }
+    
+    .tab-content { display: none; background: white; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 0 8px 8px 8px; border: 1px solid #ddd; }
 
-        /* ปรับแต่งตาราง */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
-        th { background: #003580; color: white; padding: 12px; text-align: center; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; text-align: center; vertical-align: middle; }
-        tr:hover { background-color: #f9f9f9; }
+    /* 🌟 ปรับปรุงตารางให้เป็น Data Table ตามเงื่อนไขอาจารย์ (มี Hover + สลับสี) */
+    .table-responsive { overflow-x: auto; width: 100%; margin-top: 15px; }
+    table.data-table { width: 100%; border-collapse: collapse; background: white; }
+    table.data-table th { background: var(--primary); color: white; padding: 12px; text-align: center; font-size: 14px; }
+    table.data-table td { padding: 12px; border: 1px solid #eee; font-size: 14px; text-align: center; vertical-align: middle; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; } /* สลับสีแถว */
+    table.data-table tr:hover { background-color: #f1f1f1; transition: 0.2s; } /* Hover Effect */
 
-        /* Dashboard สรุปผล */
-        .stat-card-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { padding: 20px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
+    .badge { padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
+    .bg-pending { background: var(--secondary); color: #333; }
+    .bg-confirmed { background: #28a745; color: white; }
+    .bg-cancelled { background: #dc3545; color: white; }
 
-        /* Badges */
-        .badge { padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; display: inline-block; }
-        .bg-pending { background: #febb02; color: #333; }
-        .bg-confirmed { background: #28a745; color: white; }
-        .bg-cancelled { background: #dc3545; color: white; }
+    .btn-save { background: #0071c2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-save:hover { background: #005999; }
+    
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    .form-row input, .form-row select { flex: 1; min-width: 200px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+</style>
 
-        /* Buttons */
-        .btn-save { background: #0071c2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-save:hover { background: #005999; }
-        .logout-btn { background: #d9534f; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .logout-btn:hover { background: #c9302c; }
-    </style>
-</head>
-<body style="background-color: #f4f4f4; margin: 0; font-family: sans-serif;">
-    <nav>
-        <h2>Admin Panel</h2>
-        <div style="display: flex; align-items: center; gap: 20px;">
-            <a href="/" style="color: white; text-decoration: none; font-size: 14px; font-weight: bold;">ดูหน้าเว็บปกติ</a>
-            <button class="logout-btn" onclick="localStorage.clear(); window.location.href='/login'">ออกจากระบบ</button>
+<div class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 20px;">
+    <div style="display: flex; gap: 0; margin-bottom: 0; overflow-x: auto; white-space: nowrap;">
+        <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('bookings', this)">รายการจอง</button>
+        <button class="tab-btn" onclick="switchTab('hotels', this)">จัดการโรงแรม</button>
+        <button class="tab-btn" onclick="switchTab('rooms', this)">จัดการห้องพัก</button>
+    </div>
+
+    <div id="dashboard" class="tab-content" style="display: block;">
+        <h3 style="margin-top: 0; color: var(--primary);">📊 สรุปภาพรวมการจองห้องพัก</h3>
+        <div id="dashboard-summary" class="table-responsive">
+            <p>กำลังประมวลผลข้อมูล...</p>
         </div>
-    </nav>
+    </div>
 
-    <div class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 20px;">
-        <div style="display: flex; gap: 0; margin-bottom: 0;">
-            <button class="tab-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
-            <button class="tab-btn" onclick="switchTab('bookings', this)">รายการจอง</button>
-            <button class="tab-btn" onclick="switchTab('hotels', this)">จัดการโรงแรม</button>
-            <button class="tab-btn" onclick="switchTab('rooms', this)">จัดการห้องพัก</button>
+    <div id="bookings" class="tab-content">
+        <h3 style="margin-top: 0; color: var(--primary);">📋 รายการจองทั้งหมด</h3>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">User ID</th>
+                        <th>ชื่อลูกค้า</th>
+                        <th>โรงแรม (ห้อง)</th>
+                        <th>วันที่เช็คอิน - เอาท์</th>
+                        <th>ยอดรวม</th>
+                        <th>สถานะ</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="tb-bookings"></tbody>
+            </table>
         </div>
+    </div>
 
-        <div id="dashboard" class="tab-content" style="display: block;">
-            <h3 style="margin-top: 0; color: #003580;">📊 สรุปภาพรวมการจองห้องพัก</h3>
-            <div id="dashboard-summary">
-                <p>กำลังประมวลผลข้อมูล...</p>
+    <div id="hotels" class="tab-content">
+        <div style="background: #fcfcfc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #eee;">
+            <h4 id="h-title" style="margin-top:0; color:var(--primary);">➕ เพิ่ม/แก้ไข โรงแรม</h4>
+            <input type="hidden" id="edit-h-id">
+            <div class="form-row"><input type="text" id="h-name" placeholder="ชื่อโรงแรม"><input type="text" id="h-loc" placeholder="ที่ตั้ง"></div>
+            <div class="form-row">
+                <input type="number" step="0.1" min="0" max="10" id="h-rating" placeholder="เรตติ้ง (สูงสุด 10)" oninput="if(this.value > 10) this.value = 10; if(this.value < 0) this.value = 0;">
+                <input type="text" id="h-img" placeholder="URL รูปภาพ">
             </div>
+            <div class="form-row"><input type="text" id="h-desc" placeholder="คำอธิบายโรงแรม" style="flex:1;"></div>
+            <button class="btn btn-save" id="btn-save-h" onclick="saveHotel()">บันทึกโรงแรม</button>
+            <button class="btn" style="display:none; background:#666; color:white;" id="btn-cancel-h" onclick="resetHotelForm()">ยกเลิกการแก้ไข</button>
         </div>
-
-        <div id="bookings" class="tab-content">
-            <h3 style="margin-top: 0; color: #003580;">📋 รายการจองทั้งหมด</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">User ID</th>
-                            <th>ชื่อลูกค้า</th>
-                            <th>โรงแรม (ห้อง)</th>
-                            <th>วันที่เช็คอิน - เอาท์</th>
-                            <th>ยอดรวม</th>
-                            <th>สถานะ</th>
-                            <th>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tb-bookings"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="hotels" class="tab-content">
-            <div style="background: #fcfcfc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #eee;">
-                <h4 id="h-title" style="margin-top:0; color:#003580;">➕ เพิ่ม/แก้ไข โรงแรม</h4>
-                <input type="hidden" id="edit-h-id">
-                <div class="form-row"><input type="text" id="h-name" placeholder="ชื่อโรงแรม"><input type="text" id="h-loc" placeholder="ที่ตั้ง"></div>
-                <div class="form-row">
-                    <input type="number" step="0.1" min="0" max="10" id="h-rating" placeholder="เรตติ้ง (สูงสุด 10)" oninput="if(this.value > 10) this.value = 10; if(this.value < 0) this.value = 0;">
-                    <input type="text" id="h-img" placeholder="URL รูปภาพ">
-                </div>
-                <div class="form-row"><input type="text" id="h-desc" placeholder="คำอธิบายโรงแรม" style="flex:1;"></div>
-                <button class="btn btn-save" id="btn-save-h" onclick="saveHotel()">บันทึกโรงแรม</button>
-                <button class="btn" style="display:none; background:#666; color:white; border:none; padding:8px 15px; border-radius:4px;" id="btn-cancel-h" onclick="resetHotelForm()">ยกเลิกการแก้ไข</button>
-            </div>
-            <table>
+        <div class="table-responsive">
+            <table class="data-table">
                 <thead><tr><th>ID โรงแรม</th><th>ชื่อโรงแรม</th><th>ที่ตั้ง</th><th>เรตติ้ง</th><th>จัดการ</th></tr></thead>
                 <tbody id="tb-hotels"></tbody>
             </table>
         </div>
+    </div>
 
-        <div id="rooms" class="tab-content">
-            <div style="background: #fcfcfc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #eee;">
-                <h4 id="r-title" style="margin-top:0; color:#003580;">➕ เพิ่ม/แก้ไข ห้องพัก</h4>
-                <input type="hidden" id="edit-r-id">
-                <div class="form-row">
-                    <select id="r-hotel"></select>
-                    <input type="text" id="r-name" placeholder="ชื่อ/เลขห้อง">
-                    <select id="r-type"><option value="Standard">Standard</option><option value="Deluxe">Deluxe</option><option value="Suite">Suite</option></select>
-                </div>
-                <div class="form-row"><input type="number" id="r-price" placeholder="ราคาต่อคืน"><input type="number" id="r-occ" placeholder="เข้าพักได้กี่คน"></div>
-                <button class="btn btn-save" id="btn-save-r" onclick="saveRoom()">บันทึกห้องพัก</button>
-                <button class="btn" style="display:none; background:#666; color:white; border:none; padding:8px 15px; border-radius:4px;" id="btn-cancel-r" onclick="resetRoomForm()">ยกเลิกการแก้ไข</button>
+    <div id="rooms" class="tab-content">
+        <div style="background: #fcfcfc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #eee;">
+            <h4 id="r-title" style="margin-top:0; color:var(--primary);">➕ เพิ่ม/แก้ไข ห้องพัก</h4>
+            <input type="hidden" id="edit-r-id">
+            <div class="form-row">
+                <select id="r-hotel"></select>
+                <input type="text" id="r-name" placeholder="ชื่อ/เลขห้อง">
+                <select id="r-type"><option value="Standard">Standard</option><option value="Deluxe">Deluxe</option><option value="Suite">Suite</option></select>
             </div>
-            
-            <h4 style="margin-bottom: 10px;">เลือกดูห้องตามโรงแรม:</h4>
-            <select id="filter-hotel" onchange="renderRooms()" style="padding:10px; margin-bottom:20px; width:100%; max-width:400px; border:1px solid #ccc; border-radius:4px;"></select>
-            
-            <table>
+            <div class="form-row"><input type="number" id="r-price" placeholder="ราคาต่อคืน"><input type="number" id="r-occ" placeholder="เข้าพักได้กี่คน"></div>
+            <button class="btn btn-save" id="btn-save-r" onclick="saveRoom()">บันทึกห้องพัก</button>
+            <button class="btn" style="display:none; background:#666; color:white;" id="btn-cancel-r" onclick="resetRoomForm()">ยกเลิกการแก้ไข</button>
+        </div>
+        
+        <h4 style="margin-bottom: 10px;">เลือกดูห้องตามโรงแรม:</h4>
+        <select id="filter-hotel" onchange="renderRooms()" style="padding:10px; margin-bottom:20px; width:100%; max-width:400px; border:1px solid #ccc; border-radius:4px;"></select>
+        
+        <div class="table-responsive">
+            <table class="data-table">
                 <thead><tr><th>ชื่อโรงแรม</th><th>ชื่อ/เลขห้อง</th><th>ประเภทห้อง</th><th>ราคา</th><th>พักได้</th><th>จัดการ</th></tr></thead>
                 <tbody id="tb-rooms"></tbody>
             </table>
         </div>
     </div>
+</div>
 
-    <script>
-        const token = localStorage.getItem('token');
-        if (localStorage.getItem('role') !== 'พนักงาน') window.location.href = '/';
-        const headers = { headers: { Authorization: `Bearer ${token}` } };
-        let allData = [];
-        let bookingData = [];
+<script>
+    // 🌟 1. ตั้งค่าเบื้องต้นและป้องกันชื่อตัวแปรชนกัน
+    const token = localStorage.getItem('token');
+    if (localStorage.getItem('role') !== 'พนักงาน') window.location.href = '/';
+    const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+    
+    let allData = [];
+    let bookingData = [];
 
-        function switchTab(t, btn) {
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(t).style.display = 'block'; btn.classList.add('active');
-        }
+    function switchTab(t, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(t).style.display = 'block'; 
+        btn.classList.add('active');
+    }
 
-        async function loadData() {
-            try {
-                const resB = await axios.get('http://localhost:3000/api/admin/bookings', headers);
-                bookingData = resB.data;
-                renderBookings();
-                renderDashboard();
+    // 🌟 2. โหลดข้อมูล (ใส่ Cache Busting ?_t= เพื่อให้อัปเดตทันที)
+    async function loadData() {
+        try {
+            const timeParam = `?_t=${new Date().getTime()}`;
+            const resB = await axios.get(`http://localhost:3000/api/admin/bookings${timeParam}`, authHeader);
+            bookingData = resB.data;
+            renderBookings();
+            renderDashboard();
 
-                const resH = await axios.get('http://localhost:3000/api/admin/all-data', headers);
-                allData = resH.data;
-                
-                document.getElementById('tb-hotels').innerHTML = allData.map(h => `<tr><td>#${h.hotel_id}</td><td style="text-align:left;">${h.hotel_name}</td><td>${h.location}</td><td><b style="color:#febb02;">${h.rating}</b> ⭐</td><td><button class="btn-save" style="background:#febb02; color:black; margin-right:5px;" onclick="editHotel(${h.hotel_id})">แก้ไข</button><button class="btn-save" style="background:#dc3545;" onclick="delHotel(${h.hotel_id})">ลบ</button></td></tr>`).join('');
-                
-                const opt = allData.map(h => `<option value="${h.hotel_id}">${h.hotel_name}</option>`).join('');
-                document.getElementById('r-hotel').innerHTML = opt;
-                document.getElementById('filter-hotel').innerHTML = '<option value="all">ดูทุกโรงแรม</option>' + opt;
-                
-                renderRooms();
-            } catch (e) { console.error(e); }
-        }
-
-        function renderBookings() {
-            document.getElementById('tb-bookings').innerHTML = bookingData.map(b => {
-                const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled');
-                const thaiStatus = b.status === 'Pending' ? 'รอดำเนินการ' : (b.status === 'Confirmed' ? 'ยืนยันแล้ว' : 'ยกเลิก');
-                const isCancelled = b.status === 'Cancelled';
-                return `
+            const resH = await axios.get(`http://localhost:3000/api/admin/all-data${timeParam}`, authHeader);
+            allData = resH.data;
+            
+            document.getElementById('tb-hotels').innerHTML = allData.map(h => `
                 <tr>
-                    <td style="font-weight:bold; color:#003580;">${b.User.user_id}</td>
-                    <td style="text-align:left;">${b.User.username}</td>
-                    <td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small style="color:#666;">ห้อง: ${b.Room.room_name} (${b.Room.room_type})</small></td>
-                    <td>${b.check_in_date} ถึง<br>${b.check_out_date}</td>
-                    <td style="color:#28a745; font-weight:bold;">${b.total_amount.toLocaleString()} ฿</td>
-                    <td><span class="badge ${badge}">${thaiStatus}</span></td>
+                    <td>#${h.hotel_id}</td>
+                    <td style="text-align:left;"><b>${h.hotel_name}</b></td>
+                    <td>${h.location}</td>
+                    <td><b style="color:#febb02;">${h.rating}</b> ⭐</td>
                     <td>
-                        <div style="display:flex; gap:5px; justify-content:center;">
-                            <select id="s-${b.booking_id}" style="padding:5px; flex:none; width:110px;" ${isCancelled ? 'disabled style="background:#f0f0f0;"' : ''}>
-                                <option value="Pending" ${b.status==='Pending'?'selected':''}>รอดำเนินการ</option>
-                                <option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>ยืนยันแล้ว</option>
-                                <option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>ยกเลิก</option>
-                            </select>
-                            <button class="btn-save" style="padding:5px 10px;" onclick="updStat(${b.booking_id})" ${isCancelled ? 'disabled' : ''}>บันทึก</button>
-                        </div>
+                        <button class="btn-save" style="background:#febb02; color:black; margin-right:5px; padding:6px 12px;" onclick="editHotel(${h.hotel_id})">แก้ไข</button>
+                        <button class="btn-save" style="background:#dc3545; padding:6px 12px;" onclick="delHotel(${h.hotel_id})">ลบ</button>
                     </td>
-                </tr>`;
-            }).join('');
+                </tr>`).join('');
+            
+            const opt = allData.map(h => `<option value="${h.hotel_id}">${h.hotel_name}</option>`).join('');
+            document.getElementById('r-hotel').innerHTML = opt;
+            document.getElementById('filter-hotel').innerHTML = '<option value="all">ดูทุกโรงแรม</option>' + opt;
+            
+            renderRooms();
+        } catch (e) { console.error(e); }
+    }
+
+    // 🌟 3. เงื่อนไขรายการจอง (เก็บ Logic เดิมไว้ครบ)
+    function renderBookings() {
+        document.getElementById('tb-bookings').innerHTML = bookingData.map(b => {
+            const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled');
+            const thaiStatus = b.status === 'Pending' ? 'รอดำเนินการ' : (b.status === 'Confirmed' ? 'ยืนยันแล้ว' : 'ยกเลิก');
+            const isCancelled = b.status === 'Cancelled';
+            return `
+            <tr>
+                <td style="font-weight:bold; color:var(--primary);">${b.User.user_id}</td>
+                <td style="text-align:left;">${b.User.username}</td>
+                <td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small style="color:#666;">ห้อง: ${b.Room.room_name} (${b.Room.room_type})</small></td>
+                <td>${b.check_in_date} ถึง<br>${b.check_out_date}</td>
+                <td style="color:#28a745; font-weight:bold;">${b.total_amount.toLocaleString()} ฿</td>
+                <td><span class="badge ${badge}">${thaiStatus}</span></td>
+                <td>
+                    <div style="display:flex; gap:5px; justify-content:center;">
+                        <select id="s-${b.booking_id}" style="padding:5px; border-radius:4px;" ${isCancelled ? 'disabled style="background:#f0f0f0;"' : ''}>
+                            <option value="Pending" ${b.status==='Pending'?'selected':''}>รอดำเนินการ</option>
+                            <option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>ยืนยันแล้ว</option>
+                            <option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>ยกเลิก</option>
+                        </select>
+                        <button class="btn-save" style="padding:5px 10px;" onclick="updStat(${b.booking_id})" ${isCancelled ? 'disabled style="background:#ccc;"' : ''}>บันทึก</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // 🌟 4. เงื่อนไข Dashboard (นับแยกสถานะรายโรงแรม)
+    function renderDashboard() {
+        const dashboardDiv = document.getElementById('dashboard-summary');
+        const summary = {};
+        bookingData.forEach(b => {
+            const hotelName = b.Room.Hotel.hotel_name;
+            if (!summary[hotelName]) {
+                summary[hotelName] = { pending: 0, confirmed: 0, cancelled: 0, total: 0 };
+            }
+            if (b.status === 'Pending') summary[hotelName].pending++;
+            else if (b.status === 'Confirmed') summary[hotelName].confirmed++;
+            else if (b.status === 'Cancelled') summary[hotelName].cancelled++;
+            summary[hotelName].total++;
+        });
+
+        if (Object.keys(summary).length === 0) {
+            dashboardDiv.innerHTML = '<p style="text-align:center;">ยังไม่มีข้อมูลการจองในขณะนี้</p>';
+            return;
         }
 
-        function renderDashboard() {
-            const dashboardDiv = document.getElementById('dashboard-summary');
-            
-            // จัดกลุ่มข้อมูลตามโรงแรม
-            const summary = {};
-            bookingData.forEach(b => {
-                const hotelName = b.Room.Hotel.hotel_name;
-                if (!summary[hotelName]) {
-                    summary[hotelName] = { pending: 0, confirmed: 0, cancelled: 0, total: 0 };
-                }
-                if (b.status === 'Pending') summary[hotelName].pending++;
-                else if (b.status === 'Confirmed') summary[hotelName].confirmed++;
-                else if (b.status === 'Cancelled') summary[hotelName].cancelled++;
-                summary[hotelName].total++;
-            });
-
-            if (Object.keys(summary).length === 0) {
-                dashboardDiv.innerHTML = '<p style="text-align:center;">ยังไม่มีข้อมูลการจองในขณะนี้</p>';
-                return;
-            }
-
-            let html = `<table>
-                <thead>
-                    <tr>
-                        <th style="text-align:left;">โรงแรม</th>
-                        <th>รอดำเนินการ</th>
-                        <th>ยืนยันแล้ว</th>
-                        <th>ยกเลิกแล้ว</th>
-                        <th>จำนวนห้องที่ถูกจองทั้งหมด</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-            
-            for (const hotel in summary) {
-                html += `
+        let html = `<table class="data-table">
+            <thead>
                 <tr>
-                    <td style="text-align:left;"><b>${hotel}</b></td>
-                    <td style="color:#febb02; font-weight:bold;">${summary[hotel].pending} ห้อง</td>
-                    <td style="color:#28a745; font-weight:bold;">${summary[hotel].confirmed} ห้อง</td>
-                    <td style="color:#dc3545; font-weight:bold;">${summary[hotel].cancelled} ห้อง</td>
-                    <td style="background:#f0f8ff; font-weight:bold; font-size:16px;">${summary[hotel].total} ห้อง</td>
-                </tr>`;
+                    <th style="text-align:left;">โรงแรม</th>
+                    <th>รอดำเนินการ</th>
+                    <th>ยืนยันแล้ว</th>
+                    <th>ยกเลิกแล้ว</th>
+                    <th>รวมห้องที่ถูกจอง</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
+        for (const hotel in summary) {
+            html += `
+            <tr>
+                <td style="text-align:left;"><b>${hotel}</b></td>
+                <td style="color:orange; font-weight:bold;">${summary[hotel].pending} ห้อง</td>
+                <td style="color:green; font-weight:bold;">${summary[hotel].confirmed} ห้อง</td>
+                <td style="color:red; font-weight:bold;">${summary[hotel].cancelled} ห้อง</td>
+                <td style="background:#f0f8ff; font-weight:bold; font-size:16px;">${summary[hotel].total} ห้อง</td>
+            </tr>`;
+        }
+        dashboardDiv.innerHTML = html + `</tbody></table>`;
+    }
+
+    // 🌟 5. ฟังก์ชัน Update และ Flash Messages
+    async function updStat(id) {
+        try {
+            await axios.put(`http://localhost:3000/api/admin/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader);
+            showFlash('อัปเดตสถานะสำเร็จแล้ว!', 'success');
+            loadData();
+        } catch (error) {
+            const msg = error.response?.data?.error || 'เกิดข้อผิดพลาด';
+            showFlash('ผิดพลาด: ' + msg, 'error');
+            loadData();
+        }
+    }
+
+    // ฟังก์ชันจัดการโรงแรม
+    function editHotel(id) {
+        const h = allData.find(x => x.hotel_id === id);
+        document.getElementById('edit-h-id').value = id; document.getElementById('h-name').value = h.hotel_name;
+        document.getElementById('h-loc').value = h.location; document.getElementById('h-rating').value = h.rating;
+        document.getElementById('h-desc').value = h.description; document.getElementById('h-img').value = h.image_url;
+        document.getElementById('h-title').innerText = '✏️ แก้ไขโรงแรม'; document.getElementById('btn-save-h').innerText = 'อัปเดตโรงแรม';
+        document.getElementById('btn-cancel-h').style.display = 'inline-block';
+    }
+    function resetHotelForm() {
+        document.getElementById('edit-h-id').value = ''; document.getElementById('h-name').value = '';
+        document.getElementById('h-loc').value = ''; document.getElementById('h-rating').value = '';
+        document.getElementById('h-desc').value = ''; document.getElementById('h-img').value = '';
+        document.getElementById('h-title').innerText = '➕ เพิ่มโรงแรมใหม่'; document.getElementById('btn-save-h').innerText = 'บันทึกโรงแรม';
+        document.getElementById('btn-cancel-h').style.display = 'none';
+    }
+    async function saveHotel() {
+        const id = document.getElementById('edit-h-id').value;
+        const data = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value };
+        try {
+            if(id) await axios.put(`http://localhost:3000/api/admin/hotels/${id}`, data, authHeader);
+            else await axios.post('http://localhost:3000/api/admin/hotels', data, authHeader);
+            showFlash('บันทึกข้อมูลโรงแรมเรียบร้อย!', 'success'); resetHotelForm(); loadData();
+        } catch (e) { showFlash('บันทึกไม่สำเร็จ', 'error'); }
+    }
+    async function delHotel(id) { if(confirm('ลบโรงแรมนี้?')) { try { await axios.delete(`http://localhost:3000/api/admin/hotels/${id}`, authHeader); showFlash('ลบสำเร็จ', 'success'); loadData(); } catch(e) { showFlash(e.response.data.error, 'error'); } } }
+
+    // ฟังก์ชันจัดการห้องพัก
+    function renderRooms() {
+        const filterId = document.getElementById('filter-hotel').value;
+        let html = '';
+        allData.forEach(h => {
+            if(filterId === 'all' || filterId == h.hotel_id) {
+                h.Rooms.forEach(r => {
+                    html += `<tr><td style="text-align:left;"><b>${h.hotel_name}</b></td><td>${r.room_name}</td><td>${r.room_type}</td><td style="font-weight:bold; color:#28a745;">${r.price_per_night.toLocaleString()} ฿</td><td>${r.max_occupancy} คน</td><td><button class="btn-save" style="background:#febb02; color:black; margin-right:5px; padding:6px 12px;" onclick="editRoom(${h.hotel_id}, ${r.room_id})">แก้ไข</button><button class="btn-save" style="background:#dc3545; padding:6px 12px;" onclick="delRoom(${r.room_id})">ลบ</button></td></tr>`;
+                });
             }
+        });
+        document.getElementById('tb-rooms').innerHTML = html;
+    }
 
-            html += `</tbody></table>`;
-            dashboardDiv.innerHTML = html;
-        }
+    function editRoom(hId, rId) {
+        const r = allData.find(x => x.hotel_id === hId).Rooms.find(x => x.room_id === rId);
+        document.getElementById('edit-r-id').value = rId; document.getElementById('r-hotel').value = hId;
+        document.getElementById('r-name').value = r.room_name; document.getElementById('r-type').value = r.room_type;
+        document.getElementById('r-price').value = r.price_per_night; document.getElementById('r-occ').value = r.max_occupancy;
+        document.getElementById('r-title').innerText = '✏️ แก้ไขห้องพัก'; document.getElementById('btn-save-r').innerText = 'อัปเดตห้องพัก';
+        document.getElementById('btn-cancel-r').style.display = 'inline-block';
+    }
+    function resetRoomForm() {
+        document.getElementById('edit-r-id').value = ''; document.getElementById('r-name').value = '';
+        document.getElementById('r-price').value = ''; document.getElementById('r-occ').value = '';
+        document.getElementById('r-title').innerText = '➕ เพิ่มห้องพักใหม่'; document.getElementById('btn-save-r').innerText = 'บันทึกห้องพัก';
+        document.getElementById('btn-cancel-r').style.display = 'none';
+    }
+    async function saveRoom() {
+        const id = document.getElementById('edit-r-id').value;
+        const data = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value };
+        try {
+            if(id) await axios.put(`http://localhost:3000/api/admin/rooms/${id}`, data, authHeader);
+            else await axios.post('http://localhost:3000/api/admin/rooms', data, authHeader);
+            showFlash('บันทึกห้องพักเรียบร้อย!', 'success'); resetRoomForm(); loadData();
+        } catch (e) { showFlash('บันทึกไม่สำเร็จ', 'error'); }
+    }
+    async function delRoom(id) { if(confirm('ลบห้องพักนี้?')) { try { await axios.delete(`http://localhost:3000/api/admin/rooms/${id}`, authHeader); showFlash('ลบสำเร็จ', 'success'); loadData(); } catch(e) { showFlash(e.response.data.error, 'error'); } } }
 
-        async function updStat(id) {
-            try {
-                await axios.put(`http://localhost:3000/api/admin/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, headers);
-                alert('อัปเดตสถานะสำเร็จ'); loadData();
-            } catch (error) {
-                const msg = error.response && error.response.data && error.response.data.error ? error.response.data.error : 'เกิดข้อผิดพลาด';
-                alert('ไม่สามารถอัปเดตได้: ' + msg); loadData();
-            }
-        }
+    loadData();
+</script>
 
-        function editHotel(id) {
-            const h = allData.find(x => x.hotel_id === id);
-            document.getElementById('edit-h-id').value = id; document.getElementById('h-name').value = h.hotel_name;
-            document.getElementById('h-loc').value = h.location; document.getElementById('h-rating').value = h.rating;
-            document.getElementById('h-desc').value = h.description; document.getElementById('h-img').value = h.image_url;
-            document.getElementById('h-title').innerText = '✏️ แก้ไขโรงแรม'; document.getElementById('btn-save-h').innerText = 'อัปเดตโรงแรม';
-            document.getElementById('btn-cancel-h').style.display = 'inline-block';
-        }
-        function resetHotelForm() {
-            document.getElementById('edit-h-id').value = ''; document.getElementById('h-name').value = '';
-            document.getElementById('h-loc').value = ''; document.getElementById('h-rating').value = '';
-            document.getElementById('h-desc').value = ''; document.getElementById('h-img').value = '';
-            document.getElementById('h-title').innerText = '➕ เพิ่มโรงแรมใหม่'; document.getElementById('btn-save-h').innerText = 'บันทึกโรงแรม';
-            document.getElementById('btn-cancel-h').style.display = 'none';
-        }
-        async function saveHotel() {
-            const id = document.getElementById('edit-h-id').value;
-            const data = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value };
-            if(id) await axios.put(`http://localhost:3000/api/admin/hotels/${id}`, data, headers);
-            else await axios.post('http://localhost:3000/api/admin/hotels', data, headers);
-            alert('บันทึกสำเร็จ!'); resetHotelForm(); loadData();
-        }
-        async function delHotel(id) { if(confirm('ลบโรงแรมนี้?')) { try { await axios.delete(`http://localhost:3000/api/admin/hotels/${id}`, headers); loadData(); } catch(e) { alert(e.response.data.error); } } }
-
-        function renderRooms() {
-            const filterId = document.getElementById('filter-hotel').value;
-            let html = '';
-            allData.forEach(h => {
-                if(filterId === 'all' || filterId == h.hotel_id) {
-                    h.Rooms.forEach(r => {
-                        html += `<tr><td style="text-align:left;"><b>${h.hotel_name}</b></td><td>${r.room_name}</td><td>${r.room_type}</td><td style="font-weight:bold; color:#28a745;">${r.price_per_night.toLocaleString()} ฿</td><td>${r.max_occupancy} คน</td><td><button class="btn-save" style="background:#febb02; color:black; margin-right:5px;" onclick="editRoom(${h.hotel_id}, ${r.room_id})">แก้ไข</button><button class="btn-save" style="background:#dc3545;" onclick="delRoom(${r.room_id})">ลบ</button></td></tr>`;
-                    });
-                }
-            });
-            document.getElementById('tb-rooms').innerHTML = html;
-        }
-
-        function editRoom(hId, rId) {
-            const r = allData.find(x => x.hotel_id === hId).Rooms.find(x => x.room_id === rId);
-            document.getElementById('edit-r-id').value = rId; document.getElementById('r-hotel').value = hId;
-            document.getElementById('r-name').value = r.room_name; document.getElementById('r-type').value = r.room_type;
-            document.getElementById('r-price').value = r.price_per_night; document.getElementById('r-occ').value = r.max_occupancy;
-            document.getElementById('r-title').innerText = '✏️ แก้ไขห้องพัก'; document.getElementById('btn-save-r').innerText = 'อัปเดตห้องพัก';
-            document.getElementById('btn-cancel-r').style.display = 'inline-block';
-        }
-        function resetRoomForm() {
-            document.getElementById('edit-r-id').value = ''; document.getElementById('r-name').value = '';
-            document.getElementById('r-price').value = ''; document.getElementById('r-occ').value = '';
-            document.getElementById('r-title').innerText = '➕ เพิ่มห้องพักใหม่'; document.getElementById('btn-save-r').innerText = 'บันทึกห้องพัก';
-            document.getElementById('btn-cancel-r').style.display = 'none';
-        }
-        async function saveRoom() {
-            const id = document.getElementById('edit-r-id').value;
-            const data = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value };
-            if(id) await axios.put(`http://localhost:3000/api/admin/rooms/${id}`, data, headers);
-            else await axios.post('http://localhost:3000/api/admin/rooms', data, headers);
-            alert('บันทึกสำเร็จ!'); resetRoomForm(); loadData();
-        }
-        async function delRoom(id) { if(confirm('ลบห้องพักนี้?')) { try { await axios.delete(`http://localhost:3000/api/admin/rooms/${id}`, headers); loadData(); } catch(e) { alert(e.response.data.error); } } }
-
-        loadData();
-    </script>
-</body>
-</html>
+<%- include('partials/footer') %>

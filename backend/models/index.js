@@ -24,7 +24,7 @@ const Hotel = sequelize.define('Hotel', {
 
 const Room = sequelize.define('Room', {
     room_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    room_name: { type: DataTypes.STRING, allowNull: false }, // 🌟 เพิ่มเลขห้อง/ชื่อห้อง เช่น 101, 102
+    room_name: { type: DataTypes.STRING, allowNull: false }, //พิ่มเลขห้อง ชื่อห้อง เช่น 101, 102
     room_type: { type: DataTypes.STRING, allowNull: false },
     price_per_night: { type: DataTypes.INTEGER, allowNull: false },
     max_occupancy: { type: DataTypes.INTEGER, defaultValue: 2 },

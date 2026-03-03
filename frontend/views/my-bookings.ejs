@@ -1,130 +1,132 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <title>การจองของฉัน - HotelEase</title>
-    <link rel="stylesheet" href="/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-</head>
-<body>
-    <nav>
-        <h2>HotelEase</h2>
-        <div id="auth"></div>
-    </nav>
+<%- include('partials/header') %>
 
-    <div class="container" style="max-width: 800px;">
-        <h2 style="color: var(--primary); margin-bottom: 20px;">ประวัติการจองของฉัน</h2>
-        
-        <div id="booking-list">
-            <p style="text-align: center;">กำลังโหลดข้อมูล...</p>
-        </div>
+<div class="container" style="max-width: 800px; margin: 30px auto; padding: 0 20px;">
+    <h2 style="color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        📅 ประวัติการจองของฉัน
+    </h2>
+    
+    <div id="booking-list">
+        <p style="text-align: center; padding: 50px; color: #666;">⏳ กำลังโหลดข้อมูลการจองของคุณ...</p>
     </div>
+</div>
 
-    <script>
-        // 🌟 เพิ่มสคริปต์จัดการ Navbar ให้แสดงชื่อผู้ใช้ และปุ่มมีขนาดเท่าหน้าแรก
-        const u = localStorage.getItem('username');
-        document.getElementById('auth').innerHTML = u 
-            ? `สวัสดี ${u} | 
-               <a href="/" class="btn" style="text-decoration:none; margin-right:5px; padding:6px 12px; background:var(--primary); color:white; border-radius:3px;">หน้าแรก</a>
-               <button onclick="localStorage.clear(); window.location.href='/login'" class="btn" style="background:red; padding:6px 12px; border:none; color:white; border-radius:3px; cursor:pointer;">Logout</button>` 
-            : `<a href="/login">เข้าสู่ระบบ</a>`;
+<script>
+    // 🌟 ฟังก์ชันโหลดข้อมูลการจอง (พร้อมระบบป้องกัน Cache)
+    async function loadMyBookings() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            if (typeof showFlash === 'function') {
+                showFlash('กรุณาเข้าสู่ระบบก่อนเข้าใช้งานหน้านี้ครับ', 'error');
+            }
+            setTimeout(() => window.location.href = '/login', 1500);
+            return;
+        }
 
-        async function loadMyBookings() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                alert('กรุณาเข้าสู่ระบบก่อนครับ');
-                window.location.href = '/login';
+        try {
+            // ใส่ Cache Busting เพื่อให้ข้อมูลอัปเดตล่าสุดเสมอ
+            const t = new Date().getTime();
+            const res = await axios.get(`http://localhost:3000/api/my-bookings?t=${t}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const list = document.getElementById('booking-list');
+            const bookings = res.data;
+
+            if (bookings.length === 0) {
+                list.innerHTML = `
+                    <div style="background: white; padding: 50px 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="color: #666;">คุณยังไม่มีประวัติการจองห้องพักในระบบ</h3>
+                        <p style="color: #999; margin-bottom: 25px;">เริ่มค้นหาโรงแรมที่คุณถูกใจและจองวันนี้เพื่อรับสิทธิพิเศษ!</p>
+                        <a href="/" class="btn" style="text-decoration: none; display: inline-block;">🔍 ค้นหาห้องพักเลย</a>
+                    </div>
+                `;
                 return;
             }
 
-            try {
-                const res = await axios.get('http://localhost:3000/api/my-bookings', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+            list.innerHTML = bookings.map(b => {
+                // จัดการสถานะและสี (Flash Style)
+                const badgeBg = b.status === 'Confirmed' ? '#28a745' : (b.status === 'Cancelled' ? '#dc3545' : '#febb02');
+                const badgeColor = b.status === 'Pending' ? '#333' : 'white';
+                const thaiStatus = b.status === 'Pending' ? 'รอดำเนินการ' : (b.status === 'Confirmed' ? 'ยืนยันแล้ว' : 'ยกเลิกแล้ว');
 
-                const list = document.getElementById('booking-list');
-                const bookings = res.data;
+                // คำนวณจำนวนคืน
+                const inDate = new Date(b.check_in_date);
+                const outDate = new Date(b.check_out_date);
+                const diffDays = Math.ceil(Math.abs(outDate - inDate) / (1000 * 60 * 60 * 24));
 
-                if (bookings.length === 0) {
-                    list.innerHTML = `
-                        <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                            <h3>คุณยังไม่มีประวัติการจองห้องพักครับ</h3>
-                            <a href="/" class="btn" style="display: inline-block; margin-top: 10px; text-decoration: none;">ค้นหาห้องพักเลย</a>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // โครงสร้างการ์ดเดิมของคุณ
-                list.innerHTML = bookings.map(b => {
-                    // จัดการสีของ Badge
-                    const badgeBg = b.status === 'Confirmed' ? '#28a745' : (b.status === 'Cancelled' ? '#dc3545' : '#febb02');
-                    const badgeColor = b.status === 'Pending' ? '#333' : 'white';
-                    const thaiStatus = b.status === 'Pending' ? 'รอดำเนินการ' : (b.status === 'Confirmed' ? 'ยืนยันแล้ว' : 'ยกเลิกแล้ว');
-
-                    // คำนวณจำนวนคืน (เพื่อความสวยงามตามภาพของคุณ)
-                    const inDate = new Date(b.check_in_date);
-                    const outDate = new Date(b.check_out_date);
-                    const diffTime = Math.abs(outDate - inDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                    return `
-                    <div class="card" style="display: block; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; position: relative;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
-                            <h3 style="margin: 0; color: var(--primary);">${b.Room.Hotel.hotel_name}</h3>
-                            <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 14px;">
-                                ${thaiStatus}
-                            </span>
-                        </div>
-                        
-                        <div style="line-height: 1.8;">
-                            <p style="margin: 0;"><strong>หมายเลขการจอง:</strong> #${b.booking_id}</p>
-                            <p style="margin: 0;"><strong>ห้องพัก:</strong> ${b.Room.room_name} (${b.Room.room_type})</p>
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
-                                <div>
-                                    <p style="margin: 0;"><strong>วันที่เข้าพัก:</strong> ${b.check_in_date} ➡️ <strong>เช็คเอาท์:</strong> ${b.check_out_date}</p>
-                                    <p style="margin: 0; color: #666;">ระยะเวลา: ${diffDays} คืน</p>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span style="font-size: 14px; color: #666;">ราคารวมทั้งหมด</span>
-                                    <h3 style="color: #28a745; margin: 0; font-size: 24px;">${b.total_amount.toLocaleString()} ฿</h3>
-                                </div>
+                return `
+                <div class="hotel-card" style="display: block; padding: 0; margin-bottom: 25px; border: 1px solid #ddd; transition: 0.3s;">
+                    <div style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fcfcfc;">
+                        <h3 style="margin: 0; color: var(--primary); font-size: 20px;">${b.Room.Hotel.hotel_name}</h3>
+                        <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            ${thaiStatus}
+                        </span>
+                    </div>
+                    
+                    <div style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <p style="margin: 0 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase;">รายละเอียดการพัก</p>
+                                <p style="margin: 0; font-weight: bold;">ห้อง: ${b.Room.room_name} (${b.Room.room_type})</p>
+                                <p style="margin: 0; color: #666; font-size: 14px;">หมายเลขการจอง: #${b.booking_id}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 0 0 5px 0; color: #888; font-size: 12px; text-transform: uppercase;">ระยะเวลา</p>
+                                <p style="margin: 0;"><b>${b.check_in_date}</b> ถึง <b>${b.check_out_date}</b></p>
+                                <p style="margin: 0; color: #666; font-size: 14px;">รวมทั้งหมด: ${diffDays} คืน</p>
                             </div>
                         </div>
 
-                        ${b.status === 'Pending' ? `
-                        <div style="text-align: right; margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 15px;">
-                            <button class="btn btn-danger" onclick="cancelBooking(${b.booking_id})" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">ยกเลิกการจอง</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #ddd; padding-top: 15px; margin-top: 10px;">
+                            <div>
+                                ${b.status === 'Pending' ? `
+                                <button class="btn" onclick="cancelBooking(${b.booking_id})" style="background: #dc3545; padding: 8px 16px; font-size: 14px;">
+                                    ยกเลิกการจอง
+                                </button>
+                                ` : '<span style="color: #bbb; font-size: 14px;">*ไม่สามารถแก้ไขรายการนี้ได้</span>'}
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 12px; color: #999; display: block;">ราคาสุทธิ</span>
+                                <span style="color: #28a745; font-size: 24px; font-weight: bold;">${b.total_amount.toLocaleString()} ฿</span>
+                            </div>
                         </div>
-                        ` : ''}
                     </div>
-                `}).join('');
+                </div>
+            `}).join('');
 
-            } catch (error) {
-                console.error(error);
-                alert('เซสชั่นหมดอายุ หรือเกิดข้อผิดพลาด กรุณาเข้าสู่ระบบใหม่ครับ');
-                localStorage.clear();
-                window.location.href = '/login';
+        } catch (error) {
+            console.error(error);
+            if (typeof showFlash === 'function') {
+                showFlash('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้งครับ', 'error');
+            }
+            localStorage.clear();
+            setTimeout(() => window.location.href = '/login', 1500);
+        }
+    }
+
+    // 🌟 ฟังก์ชันยกเลิกการจอง (ใช้ Flash Messages แทน Alert)
+    async function cancelBooking(id) {
+        if(!confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองรายการนี้?')) return;
+        
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:3000/api/my-bookings/${id}/cancel`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (typeof showFlash === 'function') {
+                showFlash('ยกเลิกรายการจองสำเร็จเรียบร้อยแล้ว', 'success');
+            }
+            loadMyBookings(); // อัปเดตข้อมูลทันทีแบบไม่ต้องรีเฟรชหน้า
+        } catch (e) {
+            const errorMsg = e.response?.data?.error || 'เกิดข้อผิดพลาดในการยกเลิก';
+            if (typeof showFlash === 'function') {
+                showFlash(errorMsg, 'error');
             }
         }
+    }
 
-        // ฟังก์ชันยกเลิกการจอง (ถ้าคุณเชื่อม API ไว้แล้ว)
-        async function cancelBooking(id) {
-            if(!confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองนี้?')) return;
-            try {
-                const token = localStorage.getItem('token');
-                await axios.put(`http://localhost:3000/api/my-bookings/${id}/cancel`, {}, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                alert('ยกเลิกการจองสำเร็จ');
-                loadMyBookings();
-            } catch (e) {
-                alert('ไม่สามารถยกเลิกได้: ' + (e.response?.data?.error || 'เกิดข้อผิดพลาด'));
-            }
-        }
+    loadMyBookings();
+</script>
 
-        loadMyBookings();
-    </script>
-</body>
-</html>
+<%- include('partials/footer') %>

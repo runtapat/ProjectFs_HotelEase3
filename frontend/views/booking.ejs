@@ -1,32 +1,61 @@
-<!DOCTYPE html>
-<html>
-<head><title>ยืนยันการจอง</title><link rel="stylesheet" href="/style.css"><script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script></head>
-<body>
-    <nav><h2>HotelEase</h2><a href="javascript:history.back()">ย้อนกลับ</a></nav>
-    <div class="form-box" style="max-width: 500px;">
-        <h2 style="color: var(--primary); margin-top:0;">สรุปการจอง</h2>
-        <div id="summary" style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; line-height: 1.8; font-size:16px;"></div>
-        <button class="btn" style="width: 100%; background:#008009; font-size: 18px;" onclick="confirmBook()">ยืนยันและชำระเงิน (ใช้โปรไฟล์สมาชิก)</button>
+<%- include('partials/header') %>
+
+<div class="container" style="max-width: 600px;">
+    <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h2 style="color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 10px;">ยืนยันการจองห้องพัก</h2>
+        
+        <div id="booking-summary" style="margin: 25px 0; line-height: 2;">
+            <p>กำลังเตรียมข้อมูลการจอง...</p>
+        </div>
+
+        <button class="btn" onclick="confirmBooking()" style="width: 100%; font-size: 18px; padding: 15px;">ยืนยันและจองตอนนี้</button>
+        <a href="/" style="display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none;">ยกเลิกและกลับหน้าหลัก</a>
     </div>
+</div>
 
-    <script>
-        const q = new URLSearchParams(window.location.search);
-        const nights = (new Date(q.get('out')) - new Date(q.get('in'))) / (1000 * 60 * 60 * 24);
-        const total = nights * q.get('price');
+<script>
+    const q = new URLSearchParams(window.location.search);
+    const roomId = q.get('id');
+    const pricePerNight = parseInt(q.get('price'));
+    const inDate = q.get('in');
+    const outDate = q.get('out');
 
-        document.getElementById('summary').innerHTML = `
-            วันเข้าพัก: <b>${q.get('in')}</b> <br> วันสิ้นสุด: <b>${q.get('out')}</b> <br> จำนวนคืน: <b>${nights}</b> คืน <br>
-            <h3 style="color:#d9534f; margin:10px 0 0 0;">ยอดชำระสุทธิ: ${total.toLocaleString()} บาท</h3>
-        `;
+    // คำนวณจำนวนคืนและยอดรวม
+    const days = Math.ceil(Math.abs(new Date(outDate) - new Date(inDate)) / (1000 * 60 * 60 * 24));
+    const total = days * pricePerNight;
 
-        async function confirmBook() {
-            const token = localStorage.getItem('token');
-            if(!token) return window.location.href = '/login';
-            try {
-                await axios.post('http://localhost:3000/api/book', { room_id: q.get('id'), check_in_date: q.get('in'), check_out_date: q.get('out'), total_amount: total }, { headers: { Authorization: `Bearer ${token}` } });
-                alert('จองสำเร็จ!'); window.location.href = '/';
-            } catch (err) { alert('เกิดข้อผิดพลาดในการจอง'); }
+    document.getElementById('booking-summary').innerHTML = `
+        <p><strong>📅 วันที่เข้าพัก:</strong> ${inDate}</p>
+        <p><strong>📅 วันที่เช็คเอาท์:</strong> ${outDate}</p>
+        <p><strong>🌙 จำนวน:</strong> ${days} คืน</p>
+        <hr>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <span style="font-size: 18px;">ยอดรวมทั้งสิ้น:</span>
+            <span class="price" style="font-size: 28px;">${total.toLocaleString()} ฿</span>
+        </div>
+    `;
+
+    async function confirmBooking() {
+        const token = localStorage.getItem('token');
+        if(!token) {
+            showFlash('กรุณาเข้าสู่ระบบก่อนทำการจองครับ', 'error');
+            return setTimeout(() => window.location.href = '/login', 1500);
         }
-    </script>
-</body>
-</html>
+
+        try {
+            await axios.post('http://localhost:3000/api/book', {
+                room_id: roomId,
+                check_in_date: inDate,
+                check_out_date: outDate,
+                total_amount: total
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
+            showFlash('จองห้องพักสำเร็จ! ระบบกำลังพาไปหน้าประวัติการจอง', 'success');
+            setTimeout(() => window.location.href = '/my-bookings', 2000);
+        } catch (e) {
+            showFlash('เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่ครับ', 'error');
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>
