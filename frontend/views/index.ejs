@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head><title>HotelEase</title><link rel="stylesheet" href="/style.css"><script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script></head>
 <body>
     <nav><h2>HotelEase</h2><div id="auth"></div></nav>
     <div class="container">
         <div class="search-bar">
-            <input type="text" id="loc" placeholder="ไปที่ไหน?">
-            <select id="type"><option value="">ทุกประเภทห้อง</option><option value="Standard">Standard</option><option value="Deluxe">Deluxe</option><option value="Suite">Suite</option></select>
-            <input type="number" id="price" placeholder="งบสูงสุด">
+            <input type="text" id="loc" placeholder="ไปที่ไหน? (เช่น Bangkok)">
+            <input type="number" id="price" placeholder="งบสูงสุด (บาท)">
             <input type="date" id="in"> <input type="date" id="out">
             <button class="btn" onclick="search()">ค้นหาเลย</button>
         </div>
@@ -18,7 +17,6 @@
         const u = localStorage.getItem('username');
         document.getElementById('auth').innerHTML = u ? `สวัสดี ${u} | <button onclick="localStorage.clear();location.reload()" class="btn" style="background:red;padding:5px;">Logout</button>` : `<a href="/login">เข้าสู่ระบบ</a> <a href="/register">สมัครสมาชิก</a>`;
 
-        // 🌟 ดักวันที่: ให้วันออก ต้องมากกว่าหรือเท่ากับวันเข้า
         document.getElementById('in').addEventListener('change', function() {
             document.getElementById('out').min = this.value;
             if(document.getElementById('out').value < this.value) document.getElementById('out').value = this.value;
@@ -29,14 +27,14 @@
             if((i && !o) || (!i && o)) return alert('ใส่วันที่ให้ครบครับ');
             if(i && o && i >= o) return alert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ');
 
-            const params = { location: document.getElementById('loc').value, room_type: document.getElementById('type').value, max_price: document.getElementById('price').value, check_in: i, check_out: o };
+            const params = { location: document.getElementById('loc').value, max_price: document.getElementById('price').value, check_in: i, check_out: o };
             
             const res = await axios.get('http://localhost:3000/api/hotels', { params });
             const list = document.getElementById('list');
             if(!res.data.length) return list.innerHTML = '<h3>ไม่พบโรงแรมที่ว่างตามเงื่อนไข</h3>';
 
             list.innerHTML = res.data.map(h => {
-                const minPrice = Math.min(...h.Rooms.map(r => r.price_per_night));
+                const minPrice = h.Rooms.length > 0 ? Math.min(...h.Rooms.map(r => r.price_per_night)) : 0;
                 return `
                 <div class="hotel-card">
                     <img src="${h.image_url}" class="hotel-img" alt="hotel">

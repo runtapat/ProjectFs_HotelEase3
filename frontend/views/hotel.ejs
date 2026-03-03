@@ -14,25 +14,13 @@
         const hotelId = q.get('id');
         let checkIn = q.get('in') || '';
         let checkOut = q.get('out') || '';
+        let allRooms = []; // ใช้เก็บห้องทั้งหมดเพื่อเอามากรอง
 
         async function loadHotel() {
             const res = await axios.get(`http://localhost:3000/api/hotels/${hotelId}?check_in=${checkIn}&check_out=${checkOut}`);
             const h = res.data;
+            allRooms = h.Rooms; // เก็บข้อมูลห้องทั้งหมดไว้
             
-            let roomsHtml = h.Rooms.length ? h.Rooms.map(r => `
-                <div class="room-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border: 1px solid #eee;">
-                    <div>
-                        <h3 style="margin:0; color:var(--primary);">ห้อง ${r.room_name} <span style="font-size: 16px; color: #555;">(${r.room_type})</span></h3>
-                        <p style="color:#666; margin:5px 0;">พักได้สูงสุด: ${r.max_occupancy} ท่าน</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="price" style="color:#008009; font-size: 24px; font-weight: bold;">${r.price_per_night.toLocaleString()} ฿</div>
-                        <span style="font-size:12px; color:#666; display:block; margin-bottom:10px;">ราคาต่อคืน</span>
-                        <button class="btn btn-success" onclick="bookRoom(${r.room_id}, ${r.price_per_night})">จองห้องนี้</button>
-                    </div>
-                </div>
-            `).join('') : '<h4 style="color:red; text-align:center; padding:20px; background:white; border-radius:8px;">ไม่มีห้องว่างในช่วงวันที่คุณเลือก กรุณาเปลี่ยนวันเข้าพัก</h4>';
-
             document.getElementById('content').innerHTML = `
                 <img src="${h.image_url}" style="width:100%; height:400px; object-fit:cover; border-radius:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:20px;">
@@ -48,30 +36,80 @@
                 <div style="background: var(--secondary); padding: 20px; border-radius: 8px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <div style="flex:1;"><label style="font-weight:bold;">วันเข้าพัก</label><input type="date" id="new-in" value="${checkIn}" style="width:100%; padding:10px; border:none; border-radius:4px; margin-top:5px;"></div>
                     <div style="flex:1;"><label style="font-weight:bold;">วันออก</label><input type="date" id="new-out" value="${checkOut}" style="width:100%; padding:10px; border:none; border-radius:4px; margin-top:5px;"></div>
+                    
+                    <div style="flex:1;">
+                        <label style="font-weight:bold;">ประเภทห้องพัก</label>
+                        <select id="filter-type" onchange="renderRooms()" style="width:100%; padding:10px; border:none; border-radius:4px; margin-top:5px;">
+                            <option value="">ทุกประเภทห้อง</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Deluxe">Deluxe</option>
+                            <option value="Suite">Suite</option>
+                        </select>
+                    </div>
+
                     <div style="display:flex; align-items:flex-end;"><button class="btn" style="background: var(--primary); color: white;" onclick="updateDates()">เช็คห้องว่าง</button></div>
                 </div>
 
-                ${roomsHtml}
+                <div id="rooms-container"></div>
             `;
 
-            // 🌟 เพิ่มสคริปต์ดัก: ให้วันออก ต้องมากกว่าหรือเท่ากับวันเข้า (ดักในหน้า hotel ด้วย)
+            // ดักวันที่ให้เช็คเอาท์ต้องมากกว่าเช็คอินเสมอ
             document.getElementById('new-in').addEventListener('change', function() {
                 document.getElementById('new-out').min = this.value;
                 if(document.getElementById('new-out').value < this.value) document.getElementById('new-out').value = this.value;
             });
+
+            renderRooms(); // วาดข้อมูลห้องพักลงจอ
         }
 
+        // ฟังก์ชันวาดการ์ดห้องพัก (รวมระบบกรองแล้ว)
+        function renderRooms() {
+            const selectedType = document.getElementById('filter-type').value;
+            
+            // กรองห้องตามประเภทที่เลือก
+            const filteredRooms = allRooms.filter(r => selectedType === '' || r.room_type === selectedType);
+
+            let roomsHtml = filteredRooms.length ? filteredRooms.map(r => `
+                <div class="room-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border: 1px solid #eee;">
+                    <div>
+                        <h3 style="margin:0; color:var(--primary);">ห้อง ${r.room_name} <span style="font-size: 16px; color: #555;">(${r.room_type})</span></h3>
+                        <p style="color:#666; margin:5px 0;">พักได้สูงสุด: ${r.max_occupancy} ท่าน</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="price" style="color:#008009; font-size: 24px; font-weight: bold;">${r.price_per_night.toLocaleString()} ฿</div>
+                        <span style="font-size:12px; color:#666; display:block; margin-bottom:10px;">ราคาต่อคืน</span>
+                        <button class="btn btn-success" onclick="bookRoom(${r.room_id}, ${r.price_per_night})">จองห้องนี้</button>
+                    </div>
+                </div>
+            `).join('') : '<h4 style="color:red; text-align:center; padding:20px; background:white; border-radius:8px;">ไม่มีห้องพักประเภทนี้ว่างในช่วงวันที่คุณเลือก</h4>';
+
+            document.getElementById('rooms-container').innerHTML = roomsHtml;
+        }
+
+        // เช็คห้องว่าง (ดึงข้อมูลใหม่จากฐานข้อมูล)
         function updateDates() {
             checkIn = document.getElementById('new-in').value;
             checkOut = document.getElementById('new-out').value;
             if((checkIn && !checkOut) || (!checkIn && checkOut)) return alert('กรุณาเลือกวันที่ให้ครบครับ');
             if(checkIn && checkOut && checkIn >= checkOut) return alert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ');
-            loadHotel();
+            loadHotel(); // โหลดข้อมูลใหม่ทั้งหมด
         }
 
+        // กดปุ่มจอง
         function bookRoom(roomId, price) {
-            if(!checkIn || !checkOut) return alert('กรุณาเลือกวันเข้าพักและวันออกในช่องด้านบนก่อนกดจองครับ');
-            window.location.href = `/booking?id=${roomId}&price=${price}&in=${checkIn}&out=${checkOut}`;
+            // 🌟 แก้ไขใหม่: ดึงวันที่จากช่อง Input ตรงๆ เลยตอนที่กดปุ่มจอง ลูกค้าไม่ต้องเสียเวลากดเช็คก่อน
+            const currentIn = document.getElementById('new-in').value;
+            const currentOut = document.getElementById('new-out').value;
+
+            if(!currentIn || !currentOut) {
+                alert('กรุณาเลือกวันเข้าพักและวันออกในช่องด้านบนให้ครบก่อนกดจองครับ');
+                document.getElementById('new-in').focus(); // โฟกัสให้ลูกค้าไปกรอก
+                return;
+            }
+            if(currentIn >= currentOut) return alert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ');
+            
+            // ส่งไปหน้าชำระเงิน
+            window.location.href = `/booking?id=${roomId}&price=${price}&in=${currentIn}&out=${currentOut}`;
         }
         
         loadHotel();
