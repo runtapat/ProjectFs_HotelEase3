@@ -24,6 +24,7 @@ const Hotel = sequelize.define('Hotel', {
 
 const Room = sequelize.define('Room', {
     room_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    room_name: { type: DataTypes.STRING, allowNull: false }, // 🌟 เพิ่มเลขห้อง/ชื่อห้อง เช่น 101, 102
     room_type: { type: DataTypes.STRING, allowNull: false },
     price_per_night: { type: DataTypes.INTEGER, allowNull: false },
     max_occupancy: { type: DataTypes.INTEGER, defaultValue: 2 },
@@ -37,7 +38,8 @@ const Booking = sequelize.define('Booking', {
     check_in_date: { type: DataTypes.DATEONLY, allowNull: false },
     check_out_date: { type: DataTypes.DATEONLY, allowNull: false },
     total_amount: { type: DataTypes.INTEGER, allowNull: false },
-    status: { type: DataTypes.ENUM('Confirmed', 'Cancelled'), defaultValue: 'Confirmed' }
+    // 🌟 เปลี่ยนให้มี Pending และเป็นค่าเริ่มต้น
+    status: { type: DataTypes.ENUM('Pending', 'Confirmed', 'Cancelled'), defaultValue: 'Pending' }
 }, { timestamps: false });
 
 Hotel.hasMany(Room, { foreignKey: 'hotel_id' });

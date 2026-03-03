@@ -20,14 +20,14 @@
             const h = res.data;
             
             let roomsHtml = h.Rooms.length ? h.Rooms.map(r => `
-                <div class="room-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div class="room-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border: 1px solid #eee;">
                     <div>
-                        <h3 style="margin:0; color:var(--primary);">${r.room_type}</h3>
+                        <h3 style="margin:0; color:var(--primary);">ห้อง ${r.room_name} <span style="font-size: 16px; color: #555;">(${r.room_type})</span></h3>
                         <p style="color:#666; margin:5px 0;">พักได้สูงสุด: ${r.max_occupancy} ท่าน</p>
                     </div>
                     <div style="text-align:right;">
-                        <div class="price" style="color:#008009; font-size: 22px; font-weight: bold;">${r.price_per_night.toLocaleString()} ฿</div>
-                        <span style="font-size:12px; color:#666; display:block; margin-bottom:5px;">ราคาต่อคืน</span>
+                        <div class="price" style="color:#008009; font-size: 24px; font-weight: bold;">${r.price_per_night.toLocaleString()} ฿</div>
+                        <span style="font-size:12px; color:#666; display:block; margin-bottom:10px;">ราคาต่อคืน</span>
                         <button class="btn btn-success" onclick="bookRoom(${r.room_id}, ${r.price_per_night})">จองห้องนี้</button>
                     </div>
                 </div>
@@ -48,18 +48,25 @@
                 <div style="background: var(--secondary); padding: 20px; border-radius: 8px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     <div style="flex:1;"><label style="font-weight:bold;">วันเข้าพัก</label><input type="date" id="new-in" value="${checkIn}" style="width:100%; padding:10px; border:none; border-radius:4px; margin-top:5px;"></div>
                     <div style="flex:1;"><label style="font-weight:bold;">วันออก</label><input type="date" id="new-out" value="${checkOut}" style="width:100%; padding:10px; border:none; border-radius:4px; margin-top:5px;"></div>
-                    <div style="display:flex; align-items:flex-end;"><button class="btn" onclick="updateDates()">เช็คห้องว่าง</button></div>
+                    <div style="display:flex; align-items:flex-end;"><button class="btn" style="background: var(--primary); color: white;" onclick="updateDates()">เช็คห้องว่าง</button></div>
                 </div>
 
                 ${roomsHtml}
             `;
+
+            // 🌟 เพิ่มสคริปต์ดัก: ให้วันออก ต้องมากกว่าหรือเท่ากับวันเข้า (ดักในหน้า hotel ด้วย)
+            document.getElementById('new-in').addEventListener('change', function() {
+                document.getElementById('new-out').min = this.value;
+                if(document.getElementById('new-out').value < this.value) document.getElementById('new-out').value = this.value;
+            });
         }
 
         function updateDates() {
             checkIn = document.getElementById('new-in').value;
             checkOut = document.getElementById('new-out').value;
             if((checkIn && !checkOut) || (!checkIn && checkOut)) return alert('กรุณาเลือกวันที่ให้ครบครับ');
-            loadHotel(); // รีเฟรชห้องใหม่ตามวันที่เลือก
+            if(checkIn && checkOut && checkIn >= checkOut) return alert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ');
+            loadHotel();
         }
 
         function bookRoom(roomId, price) {

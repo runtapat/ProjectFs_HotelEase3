@@ -18,9 +18,17 @@
         const u = localStorage.getItem('username');
         document.getElementById('auth').innerHTML = u ? `สวัสดี ${u} | <button onclick="localStorage.clear();location.reload()" class="btn" style="background:red;padding:5px;">Logout</button>` : `<a href="/login">เข้าสู่ระบบ</a> <a href="/register">สมัครสมาชิก</a>`;
 
+        // 🌟 ดักวันที่: ให้วันออก ต้องมากกว่าหรือเท่ากับวันเข้า
+        document.getElementById('in').addEventListener('change', function() {
+            document.getElementById('out').min = this.value;
+            if(document.getElementById('out').value < this.value) document.getElementById('out').value = this.value;
+        });
+
         async function search() {
             const i = document.getElementById('in').value, o = document.getElementById('out').value;
             if((i && !o) || (!i && o)) return alert('ใส่วันที่ให้ครบครับ');
+            if(i && o && i >= o) return alert('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ');
+
             const params = { location: document.getElementById('loc').value, room_type: document.getElementById('type').value, max_price: document.getElementById('price').value, check_in: i, check_out: o };
             
             const res = await axios.get('http://localhost:3000/api/hotels', { params });
@@ -28,7 +36,6 @@
             if(!res.data.length) return list.innerHTML = '<h3>ไม่พบโรงแรมที่ว่างตามเงื่อนไข</h3>';
 
             list.innerHTML = res.data.map(h => {
-                // หาห้องที่ถูกที่สุดของโรงแรมนี้เพื่อโชว์ "เริ่มต้นที่"
                 const minPrice = Math.min(...h.Rooms.map(r => r.price_per_night));
                 return `
                 <div class="hotel-card">
@@ -50,7 +57,6 @@
 
         function goHotel(id) {
             const i = document.getElementById('in').value, o = document.getElementById('out').value;
-            // ส่ง parameter วันที่ไปหน้ารายละเอียดโรงแรมด้วย
             window.location.href = `/hotel?id=${id}&in=${i}&out=${o}`;
         }
         search();
