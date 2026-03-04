@@ -13,6 +13,10 @@
 </div>
 
 <script>
+    // 🌟 ดึงค่า PORT จาก Server ผ่าน EJS Variable
+    const API_PORT = "<%= apiPort %>"; 
+    const LOGIN_URL = `http://localhost:${API_PORT}/api/login`;
+
     async function login() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('pass').value;
@@ -20,7 +24,8 @@
         if(!email || !password) return showFlash('กรุณากรอกข้อมูลให้ครบทุกช่องครับ', 'error');
 
         try {
-            const res = await axios.post('http://localhost:3000/api/login', { email, password });
+            // 🌟 เปลี่ยน URL มาใช้ตัวแปรที่ดึงค่าจาก .env
+            const res = await axios.post(LOGIN_URL, { email, password });
             
             // เก็บข้อมูลลง LocalStorage
             localStorage.setItem('token', res.data.token);

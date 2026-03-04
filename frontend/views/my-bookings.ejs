@@ -11,6 +11,10 @@
 </div>
 
 <script>
+    // 🌟 ดึงค่า PORT จาก Server ผ่าน EJS Variable
+    const API_PORT = "<%= apiPort %>"; 
+    const MY_BOOKINGS_URL = `http://localhost:${API_PORT}/api/my-bookings`;
+
     // 🌟 ฟังก์ชันโหลดข้อมูลการจอง (พร้อมระบบป้องกัน Cache)
     async function loadMyBookings() {
         const token = localStorage.getItem('token');
@@ -23,9 +27,9 @@
         }
 
         try {
-            // ใส่ Cache Busting เพื่อให้ข้อมูลอัปเดตล่าสุดเสมอ
+            // 🌟 ใส่ Cache Busting และเปลี่ยน URL เป็นแบบ Dynamic
             const t = new Date().getTime();
-            const res = await axios.get(`http://localhost:3000/api/my-bookings?t=${t}`, {
+            const res = await axios.get(`${MY_BOOKINGS_URL}?t=${t}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -44,12 +48,10 @@
             }
 
             list.innerHTML = bookings.map(b => {
-                // จัดการสถานะและสี (Flash Style)
                 const badgeBg = b.status === 'Confirmed' ? '#28a745' : (b.status === 'Cancelled' ? '#dc3545' : '#febb02');
                 const badgeColor = b.status === 'Pending' ? '#333' : 'white';
                 const thaiStatus = b.status === 'Pending' ? 'รอดำเนินการ' : (b.status === 'Confirmed' ? 'ยืนยันแล้ว' : 'ยกเลิกแล้ว');
 
-                // คำนวณจำนวนคืน
                 const inDate = new Date(b.check_in_date);
                 const outDate = new Date(b.check_out_date);
                 const diffDays = Math.ceil(Math.abs(outDate - inDate) / (1000 * 60 * 60 * 24));
@@ -104,20 +106,21 @@
         }
     }
 
-    // 🌟 ฟังก์ชันยกเลิกการจอง (ใช้ Flash Messages แทน Alert)
+    // 🌟 ฟังก์ชันยกเลิกการจอง (เปลี่ยน URL เป็นแบบ Dynamic)
     async function cancelBooking(id) {
         if(!confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจองรายการนี้?')) return;
         
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:3000/api/my-bookings/${id}/cancel`, {}, {
+            // 🌟 เรียกใช้ URL ที่อ้างอิงจาก API_PORT
+            await axios.put(`${MY_BOOKINGS_URL}/${id}/cancel`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
             if (typeof showFlash === 'function') {
                 showFlash('ยกเลิกรายการจองสำเร็จเรียบร้อยแล้ว', 'success');
             }
-            loadMyBookings(); // อัปเดตข้อมูลทันทีแบบไม่ต้องรีเฟรชหน้า
+            loadMyBookings(); 
         } catch (e) {
             const errorMsg = e.response?.data?.error || 'เกิดข้อผิดพลาดในการยกเลิก';
             if (typeof showFlash === 'function') {

@@ -1,6 +1,11 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const sequelize = new Sequelize({ dialect: 'sqlite', storage: 'database.sqlite', logging: false });
+require('dotenv').config(); // 🌟 เรียกใช้เพื่อให้เห็นค่าใน .env
 
+const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    // 🌟 ดึงค่าพาธจาก .env ถ้าไม่มีให้ใช้ค่าเดิม
+    storage: process.env.DB_PATH || './database.sqlite' 
+});
 const User = sequelize.define('User', {
     user_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     username: { type: DataTypes.STRING, allowNull: false },

@@ -1,3 +1,4 @@
+require('dotenv').config(); // 🌟 เรียกใช้ dotenv ไว้บนสุด
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -49,5 +50,14 @@ sequelize.sync({ force: true }).then(async () => {
         await Room.create({ hotel_id: createdHotel.hotel_id, room_name: '201', room_type: 'Deluxe', price_per_night: 2500, max_occupancy: 2 });
     }
 
-    app.listen(3000, () => console.log('✅ Backend API (MVC Structure) -> http://localhost:3000'));
+
+
+// ... โค้ดส่วนอื่น ๆ ของลูกพี่ ...
+
+// 🌟 เปลี่ยนจาก 3000 เป็นค่าจาก .env ถ้าไม่มีให้ใช้ 3000 เป็นค่า Default
+const PORT = process.env.PORT || 3000; 
+
+app.listen(PORT, () => {
+    console.log(`http://localhost:${PORT}`);
+});
 });

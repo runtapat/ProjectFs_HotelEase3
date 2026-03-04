@@ -126,6 +126,10 @@
 </div>
 
 <script>
+    // 🌟 ดึงค่า API_PORT มาจาก Server (ที่ส่งผ่าน res.render หรือ app.locals)
+    const API_PORT = "<%= apiPort %>"; 
+    const API_BASE_URL = `http://localhost:${API_PORT}/api/admin`;
+
     const token = localStorage.getItem('token');
     if (localStorage.getItem('role') !== 'พนักงาน') window.location.href = '/';
     const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -141,13 +145,14 @@
     async function loadData() {
         try {
             const t = new Date().getTime();
-            const resB = await axios.get(`http://localhost:3000/api/admin/bookings?_t=${t}`, authHeader);
+            // 🌟 เปลี่ยน URL เป็นตัวแปร API_BASE_URL
+            const resB = await axios.get(`${API_BASE_URL}/bookings?_t=${t}`, authHeader);
             bookingData = resB.data;
             renderBookings();
             renderDashboardAndIncome();
             renderUserDetailedReport();
 
-            const resH = await axios.get(`http://localhost:3000/api/admin/all-data?_t=${t}`, authHeader);
+            const resH = await axios.get(`${API_BASE_URL}/all-data?_t=${t}`, authHeader);
             allData = resH.data;
             
             // วาดตารางโรงแรม
@@ -157,7 +162,7 @@
             document.getElementById('r-hotel').innerHTML = opt;
             document.getElementById('filter-hotel').innerHTML = '<option value="all">ดูทุกโรงแรม</option>' + opt;
             
-            renderRooms(); // 🌟 เรียกวาดตารางห้องพัก
+            renderRooms(); 
         } catch (e) { console.error(e); }
     }
 
@@ -197,9 +202,16 @@
 
     // 🌟 3. ตารางรายการจอง
     function renderBookings() { document.getElementById('tb-bookings').innerHTML = bookingData.map(b => { const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled'); return `<tr><td>${b.User.user_id}</td><td style="text-align:left;">${b.User.username}</td><td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small>${b.Room.room_name}</small></td><td>${b.check_in_date}</td><td style="font-weight:bold;">${b.total_amount.toLocaleString()}</td><td><span class="badge ${badge}">${b.status}</span></td><td><div style="display:flex; gap:5px; justify-content:center;"><select id="s-${b.booking_id}" style="padding:5px;" ${b.status==='Cancelled'?'disabled':''}><option value="Pending" ${b.status==='Pending'?'selected':''}>Pending</option><option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>Confirmed</option><option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>Cancelled</option></select><button class="btn-save" onclick="updStat(${b.booking_id})" ${b.status==='Cancelled'?'disabled':''}>บันทึก</button></div></td></tr>`; }).join(''); }
-    async function updStat(id) { try { await axios.put(`http://localhost:3000/api/admin/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
+    
+    async function updStat(id) { 
+        try { 
+            await axios.put(`${API_BASE_URL}/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader); 
+            showFlash('สำเร็จ!', 'success'); 
+            loadData(); 
+        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
+    }
 
-    // 🌟 4. ตารางจัดการห้องพัก (ตัวหลักที่เคยหายไปครับ)
+    // 🌟 4. ตารางจัดการห้องพัก
     function renderRooms() {
         const filterId = document.getElementById('filter-hotel').value;
         let html = '';
@@ -223,16 +235,40 @@
         document.getElementById('tb-rooms').innerHTML = html;
     }
 
-    // ฟังก์ชัน CRUD Hotels/Rooms อื่นๆ (ยังอยู่ครบครับ)
+    // ฟังก์ชัน CRUD Hotels/Rooms
     function editHotel(id) { const h = allData.find(x => x.hotel_id === id); document.getElementById('edit-h-id').value = id; document.getElementById('h-name').value = h.hotel_name; document.getElementById('h-loc').value = h.location; document.getElementById('h-rating').value = h.rating; document.getElementById('h-desc').value = h.description; document.getElementById('h-img').value = h.image_url; document.getElementById('h-title').innerText = '✏️ แก้ไขโรงแรม'; document.getElementById('btn-cancel-h').style.display = 'inline-block'; }
     function resetHotelForm() { document.getElementById('edit-h-id').value = ''; document.getElementById('h-title').innerText = '➕ เพิ่มโรงแรมใหม่'; document.getElementById('btn-cancel-h').style.display = 'none'; }
-    async function saveHotel() { const id = document.getElementById('edit-h-id').value; const d = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value }; try { if(id) await axios.put(`http://localhost:3000/api/admin/hotels/${id}`, d, authHeader); else await axios.post('http://localhost:3000/api/admin/hotels', d, authHeader); showFlash('สำเร็จ!', 'success'); resetHotelForm(); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
-    async function delHotel(id) { if(confirm('ลบ?')) { try { await axios.delete(`http://localhost:3000/api/admin/hotels/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
+    
+    async function saveHotel() { 
+        const id = document.getElementById('edit-h-id').value; 
+        const d = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value }; 
+        try { 
+            if(id) await axios.put(`${API_BASE_URL}/hotels/${id}`, d, authHeader); 
+            else await axios.post(`${API_BASE_URL}/hotels`, d, authHeader); 
+            showFlash('สำเร็จ!', 'success'); 
+            resetHotelForm(); 
+            loadData(); 
+        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
+    }
+    
+    async function delHotel(id) { if(confirm('ลบ?')) { try { await axios.delete(`${API_BASE_URL}/hotels/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
     
     function editRoom(hId, rId) { const r = allData.find(x => x.hotel_id === hId).Rooms.find(x => x.room_id === rId); document.getElementById('edit-r-id').value = rId; document.getElementById('r-hotel').value = hId; document.getElementById('r-name').value = r.room_name; document.getElementById('r-type').value = r.room_type; document.getElementById('r-price').value = r.price_per_night; document.getElementById('r-occ').value = r.max_occupancy; document.getElementById('r-title').innerText = '✏️ แก้ไขห้องพัก'; document.getElementById('btn-cancel-r').style.display = 'inline-block'; }
     function resetRoomForm() { document.getElementById('edit-r-id').value = ''; document.getElementById('r-title').innerText = '➕ เพิ่มห้องพักใหม่'; document.getElementById('btn-cancel-r').style.display = 'none'; }
-    async function saveRoom() { const id = document.getElementById('edit-r-id').value; const d = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value }; try { if(id) await axios.put(`http://localhost:3000/api/admin/rooms/${id}`, d, authHeader); else await axios.post('http://localhost:3000/api/admin/rooms', d, authHeader); showFlash('สำเร็จ!', 'success'); resetRoomForm(); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
-    async function delRoom(id) { if(confirm('ลบ?')) { try { await axios.delete(`http://localhost:3000/api/admin/rooms/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
+    
+    async function saveRoom() { 
+        const id = document.getElementById('edit-r-id').value; 
+        const d = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value }; 
+        try { 
+            if(id) await axios.put(`${API_BASE_URL}/rooms/${id}`, d, authHeader); 
+            else await axios.post(`${API_BASE_URL}/rooms`, d, authHeader); 
+            showFlash('สำเร็จ!', 'success'); 
+            resetRoomForm(); 
+            loadData(); 
+        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
+    }
+    
+    async function delRoom(id) { if(confirm('ลบ?')) { try { await axios.delete(`${API_BASE_URL}/rooms/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
 
     loadData();
 </script>

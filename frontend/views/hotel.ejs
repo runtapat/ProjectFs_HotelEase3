@@ -7,6 +7,10 @@
 </div>
 
 <script>
+    // 🌟 ดึงค่า PORT จาก Server ผ่าน EJS Variable
+    const API_PORT = "<%= apiPort %>"; 
+    const API_BASE_URL = `http://localhost:${API_PORT}/api/hotels`;
+
     const q = new URLSearchParams(window.location.search);
     const hotelId = q.get('id');
     let checkIn = q.get('in') || '';
@@ -15,8 +19,8 @@
 
     async function loadHotel() {
         try {
-            // 🌟 ส่งวันที่ไปให้ Backend กรองห้องที่ซ้อนทับกันออกทันที
-            const res = await axios.get(`http://localhost:3000/api/hotels/${hotelId}?check_in=${checkIn}&check_out=${checkOut}`);
+            // 🌟 เปลี่ยน URL เป็นตัวแปร API_BASE_URL และส่งวันที่ไปให้ Backend
+            const res = await axios.get(`${API_BASE_URL}/${hotelId}?check_in=${checkIn}&check_out=${checkOut}`);
             const h = res.data;
             allRooms = h.Rooms; 
             
@@ -63,7 +67,6 @@
                 const valIn = inInput.value;
                 const valOut = outInput.value;
                 
-                // ตั้งค่าวันที่ออกขั้นต่ำให้น้อยกว่าวันเข้าไม่ได้
                 outInput.min = valIn;
 
                 if (valIn && valOut) {
@@ -73,7 +76,7 @@
                     }
                     checkIn = valIn;
                     checkOut = valOut;
-                    loadHotel(); // โหลดข้อมูลใหม่จาก Backend ทันที
+                    loadHotel(); 
                 }
             };
 
@@ -114,7 +117,6 @@
             document.getElementById('new-in').focus();
             return;
         }
-        // ส่งไปหน้าสรุปการจอง
         window.location.href = `/booking?id=${roomId}&price=${price}&in=${checkIn}&out=${checkOut}`;
     }
     
