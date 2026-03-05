@@ -41,7 +41,6 @@
 </style>
 
 <div class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 20px;">
-    
     <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; margin-bottom: 0; overflow-x: auto;">
         <div>
             <div class="tab-group-label">📊 Analytics Reports</div>
@@ -112,10 +111,8 @@
             <button class="btn btn-save" onclick="saveRoom()">บันทึกห้องพัก</button>
             <button class="btn" style="display:none; background:#666; color:white;" id="btn-cancel-r" onclick="resetRoomForm()">ยกเลิก</button>
         </div>
-        
         <h4 style="margin-bottom: 10px;">เลือกดูห้องตามโรงแรม:</h4>
         <select id="filter-hotel" onchange="renderRooms()" style="padding:10px; margin-bottom:20px; width:100%; max-width:400px; border:1px solid #ccc; border-radius:4px;"></select>
-        
         <div class="table-responsive">
             <table class="data-table">
                 <thead><tr><th>ชื่อโรงแรม</th><th>ชื่อ/เลขห้อง</th><th>ประเภทห้อง</th><th>ราคา</th><th>พักได้</th><th>จัดการ</th></tr></thead>
@@ -126,10 +123,8 @@
 </div>
 
 <script>
-    // 🌟 ดึงค่า API_PORT มาจาก Server (ที่ส่งผ่าน res.render หรือ app.locals)
     const API_PORT = "<%= apiPort %>"; 
     const API_BASE_URL = `http://localhost:${API_PORT}/api/admin`;
-
     const token = localStorage.getItem('token');
     if (localStorage.getItem('role') !== 'พนักงาน') window.location.href = '/';
     const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -145,7 +140,6 @@
     async function loadData() {
         try {
             const t = new Date().getTime();
-            // 🌟 เปลี่ยน URL เป็นตัวแปร API_BASE_URL
             const resB = await axios.get(`${API_BASE_URL}/bookings?_t=${t}`, authHeader);
             bookingData = resB.data;
             renderBookings();
@@ -154,120 +148,133 @@
 
             const resH = await axios.get(`${API_BASE_URL}/all-data?_t=${t}`, authHeader);
             allData = resH.data;
-            
-            // วาดตารางโรงแรม
             document.getElementById('tb-hotels').innerHTML = allData.map(h => `<tr><td>#${h.hotel_id}</td><td style="text-align:left;"><b>${h.hotel_name}</b></td><td>${h.location}</td><td><b style="color:#febb02;">${h.rating}</b> ⭐</td><td><button class="btn-save" style="background:#febb02; color:black; margin-right:5px; padding:6px 12px;" onclick="editHotel(${h.hotel_id})">แก้ไข</button><button class="btn-save" style="background:#dc3545; padding:6px 12px;" onclick="delHotel(${h.hotel_id})">ลบ</button></td></tr>`).join('');
-            
             const opt = allData.map(h => `<option value="${h.hotel_id}">${h.hotel_name}</option>`).join('');
             document.getElementById('r-hotel').innerHTML = opt;
             document.getElementById('filter-hotel').innerHTML = '<option value="all">ดูทุกโรงแรม</option>' + opt;
-            
             renderRooms(); 
         } catch (e) { console.error(e); }
     }
 
-    // 🌟 1. Dashboard Income
+    // 🌟 1. แก้ไขสถิติรายได้: แยก Confirmed และ Pending ออกจากกัน
     function renderDashboardAndIncome() {
         const month = document.getElementById('filter-month-db').value;
-        const summary = {}; let grandTotal = 0;
+        const summary = {}; 
+        let grandConfirmed = 0; // รายได้จริงที่เข้ากระเป๋า
+        let grandPending = 0;   // ยอดจองที่รอการยืนยัน
+        
         const filtered = bookingData.filter(b => !month || b.check_in_date.startsWith(month));
         filtered.forEach(b => {
             const h = b.Room.Hotel.hotel_name;
-            if (!summary[h]) summary[h] = { p: 0, c: 0, x: 0, income: 0 };
-            if (b.status === 'Pending') summary[h].p++;
-            else if (b.status === 'Confirmed') { summary[h].c++; summary[h].income += b.total_amount; grandTotal += b.total_amount; }
-            else if (b.status === 'Cancelled') summary[h].x++;
+            if (!summary[h]) summary[h] = { p: 0, c: 0, x: 0, confIncome: 0, pendIncome: 0 };
+            
+            if (b.status === 'Pending') {
+                summary[h].p++;
+                summary[h].pendIncome += b.total_amount;
+                grandPending += b.total_amount;
+            } else if (b.status === 'Confirmed') {
+                summary[h].c++;
+                summary[h].confIncome += b.total_amount;
+                grandConfirmed += b.total_amount;
+            } else if (b.status === 'Cancelled') {
+                summary[h].x++;
+            }
         });
-        document.getElementById('overall-revenue-card').innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span>💰 <b>รายได้รวม (${month || 'ทั้งหมด'}):</b></span><span style="font-size: 28px; font-weight: bold; color: #28a745;">${grandTotal.toLocaleString()} ฿</span></div>`;
-        let html = `<table class="data-table"><thead><tr><th style="text-align:left;">ชื่อโรงแรม</th><th>Pending</th><th>Confirmed</th><th>Cancelled</th><th style="color:#28a745;">รายได้</th></tr></thead><tbody>`;
-        for (const h in summary) html += `<tr><td style="text-align:left;"><b>${h}</b></td><td>${summary[h].p}</td><td style="color:green; font-weight:bold;">${summary[h].c}</td><td style="color:red;">${summary[h].x}</td><td style="font-weight:bold; color:#28a745;">${summary[h].income.toLocaleString()} ฿</td></tr>`;
+
+        // 🌟 เพิ่มการแสดงผลยอดรอดำเนินการแยกออกมา
+        document.getElementById('overall-revenue-card').innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>💰 <b>รายได้รวมยืนยันแล้ว (${month || 'ทั้งหมด'}):</b></span>
+                    <span style="font-size: 26px; font-weight: bold; color: #28a745;">${grandConfirmed.toLocaleString()} ฿</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #ddd; padding-top:8px;">
+                    <span>⏳ <b>ยอดจองรอดำเนินการ:</b></span>
+                    <span style="font-size: 18px; font-weight: bold; color: #febb02;">${grandPending.toLocaleString()} ฿</span>
+                </div>
+            </div>`;
+
+        let html = `<table class="data-table"><thead><tr><th style="text-align:left;">ชื่อโรงแรม</th><th>Pending</th><th>Confirmed</th><th>Cancelled</th><th style="color:#28a745;">รายได้จริง</th><th style="color:#febb02;">ยอดรอดำเนินการ</th></tr></thead><tbody>`;
+        for (const h in summary) {
+            html += `<tr>
+                <td style="text-align:left;"><b>${h}</b></td>
+                <td>${summary[h].p}</td>
+                <td style="color:green; font-weight:bold;">${summary[h].c}</td>
+                <td style="color:red;">${summary[h].x}</td>
+                <td style="font-weight:bold; color:#28a745;">${summary[h].confIncome.toLocaleString()} ฿</td>
+                <td style="font-weight:bold; color:#febb02;">${summary[h].pendIncome.toLocaleString()} ฿</td>
+            </tr>`;
+        }
         document.getElementById('dashboard-summary').innerHTML = html + `</tbody></table>`;
     }
 
-    // 🌟 2. รายงานผู้ใช้
+    // 🌟 2. แก้ไขรายงานสมาชิก: แยกสรุปยอดที่ยืนยันแล้ว และรอดำเนินการ
     function renderUserDetailedReport() {
         const month = document.getElementById('filter-month-users').value;
-        const userMap = {}; let totalSum = 0;
+        const userMap = {}; 
+        let totalConfSum = 0;
+        let totalPendSum = 0;
+        
         const filtered = bookingData.filter(b => !month || b.check_in_date.startsWith(month));
         filtered.forEach(b => {
-            const n = b.User.username; if (!userMap[n]) userMap[n] = [];
-            userMap[n].push(b); totalSum += b.total_amount;
+            const n = b.User.username; 
+            if (!userMap[n]) userMap[n] = [];
+            userMap[n].push(b);
+            if (b.status === 'Confirmed') totalConfSum += b.total_amount;
+            if (b.status === 'Pending') totalPendSum += b.total_amount;
         });
-        document.getElementById('users-overall-summary').innerHTML = `<div style="background: #fff9c4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #fbc02d; display: flex; justify-content: space-between; align-items: center;"><span>👥 <b>จำนวนผู้ใช้:</b> ${Object.keys(userMap).length} คน</span><span>📝 <b>ยอดจองรวม:</b> <b style="font-size: 20px;">${totalSum.toLocaleString()} ฿</b></span></div>`;
+
+        // 🌟 อัปเดต Card สรุปยอดจองของสมาชิก
+        document.getElementById('users-overall-summary').innerHTML = `
+            <div style="background: #fff9c4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #fbc02d; display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
+                <span>👥 <b>จำนวนผู้ใช้:</b> ${Object.keys(userMap).length} คน</span>
+                <div style="text-align:right;">
+                    <div style="color:#28a745;">✅ <b>ยอดที่ยืนยันแล้ว:</b> <b style="font-size: 20px;">${totalConfSum.toLocaleString()} ฿</b></div>
+                    <div style="color:#e5a900; font-size:14px;">⏳ <b>ยอดรอดำเนินการ:</b> <b>${totalPendSum.toLocaleString()} ฿</b></div>
+                </div>
+            </div>`;
+
         document.getElementById('user-detailed-list').innerHTML = Object.entries(userMap).map(([name, bks]) => {
-            let sum = 0; const rows = bks.map(b => { sum += b.total_amount; return `<tr><td>${b.Room.Hotel.hotel_name}</td><td>${b.Room.room_name}</td><td>${b.check_in_date}</td><td>${b.total_amount.toLocaleString()}</td><td>${b.status}</td></tr>`; }).join('');
-            return `<div class="user-report-card"><div class="user-report-header"><span>👤 <b>${name}</b></span><span>รายการ: ${bks.length}</span></div><table class="sub-table"><thead><tr><th>โรงแรม</th><th>ห้อง</th><th>วันที่</th><th>ราคา</th><th>สถานะ</th></tr></thead><tbody>${rows}</tbody></table><div class="user-report-footer">รวมเงิน: ${sum.toLocaleString()} ฿</div></div>`;
+            let uConf = 0; let uPend = 0;
+            const rows = bks.map(b => { 
+                if (b.status === 'Confirmed') uConf += b.total_amount;
+                if (b.status === 'Pending') uPend += b.total_amount;
+                return `<tr><td>${b.Room.Hotel.hotel_name}</td><td>${b.Room.room_name}</td><td>${b.check_in_date}</td><td>${b.total_amount.toLocaleString()}</td><td>${b.status}</td></tr>`; 
+            }).join('');
+            return `
+                <div class="user-report-card">
+                    <div class="user-report-header"><span><b>${name}</b></span><span>รายการ: ${bks.length}</span></div>
+                    <table class="sub-table"><thead><tr><th>โรงแรม</th><th>ห้อง</th><th>วันที่</th><th>ราคา</th><th>สถานะ</th></tr></thead><tbody>${rows}</tbody></table>
+                    <div class="user-report-footer">
+                        <span style="font-size:14px; color:#666; font-weight:normal; margin-right:15px;">รอดำเนินการ: ${uPend.toLocaleString()} ฿</span>
+                        💰 ยอดจริง (Confirmed): ${uConf.toLocaleString()} ฿
+                    </div>
+                </div>`;
         }).join('');
     }
 
-    // 🌟 3. ตารางรายการจอง
+    // --- ส่วน CRUD อื่น ๆ คงเดิมตามโค้ดต้นฉบับ ---
     function renderBookings() { document.getElementById('tb-bookings').innerHTML = bookingData.map(b => { const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled'); return `<tr><td>${b.User.user_id}</td><td style="text-align:left;">${b.User.username}</td><td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small>${b.Room.room_name}</small></td><td>${b.check_in_date}</td><td style="font-weight:bold;">${b.total_amount.toLocaleString()}</td><td><span class="badge ${badge}">${b.status}</span></td><td><div style="display:flex; gap:5px; justify-content:center;"><select id="s-${b.booking_id}" style="padding:5px;" ${b.status==='Cancelled'?'disabled':''}><option value="Pending" ${b.status==='Pending'?'selected':''}>Pending</option><option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>Confirmed</option><option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>Cancelled</option></select><button class="btn-save" onclick="updStat(${b.booking_id})" ${b.status==='Cancelled'?'disabled':''}>บันทึก</button></div></td></tr>`; }).join(''); }
-    
-    async function updStat(id) { 
-        try { 
-            await axios.put(`${API_BASE_URL}/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader); 
-            showFlash('สำเร็จ!', 'success'); 
-            loadData(); 
-        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
-    }
-
-    // 🌟 4. ตารางจัดการห้องพัก
+    async function updStat(id) { try { await axios.put(`${API_BASE_URL}/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
     function renderRooms() {
         const filterId = document.getElementById('filter-hotel').value;
         let html = '';
         allData.forEach(h => {
             if(filterId === 'all' || filterId == h.hotel_id) {
                 h.Rooms.forEach(r => {
-                    html += `<tr>
-                        <td style="text-align:left;"><b>${h.hotel_name}</b></td>
-                        <td>${r.room_name}</td>
-                        <td>${r.room_type}</td>
-                        <td style="font-weight:bold; color:#28a745;">${r.price_per_night.toLocaleString()} ฿</td>
-                        <td>${r.max_occupancy} คน</td>
-                        <td>
-                            <button class="btn-save" style="background:#febb02; color:black; margin-right:5px; padding:6px 12px;" onclick="editRoom(${h.hotel_id}, ${r.room_id})">แก้ไข</button>
-                            <button class="btn-save" style="background:#dc3545; padding:6px 12px;" onclick="delRoom(${r.room_id})">ลบ</button>
-                        </td>
-                    </tr>`;
+                    html += `<tr><td style="text-align:left;"><b>${h.hotel_name}</b></td><td>${r.room_name}</td><td>${r.room_type}</td><td style="font-weight:bold; color:#28a745;">${r.price_per_night.toLocaleString()} ฿</td><td>${r.max_occupancy} คน</td><td><button class="btn-save" style="background:#febb02; color:black; margin-right:5px; padding:6px 12px;" onclick="editRoom(${h.hotel_id}, ${r.room_id})">แก้ไข</button><button class="btn-save" style="background:#dc3545; padding:6px 12px;" onclick="delRoom(${r.room_id})">ลบ</button></td></tr>`;
                 });
             }
         });
         document.getElementById('tb-rooms').innerHTML = html;
     }
-
-    // ฟังก์ชัน CRUD Hotels/Rooms
     function editHotel(id) { const h = allData.find(x => x.hotel_id === id); document.getElementById('edit-h-id').value = id; document.getElementById('h-name').value = h.hotel_name; document.getElementById('h-loc').value = h.location; document.getElementById('h-rating').value = h.rating; document.getElementById('h-desc').value = h.description; document.getElementById('h-img').value = h.image_url; document.getElementById('h-title').innerText = '✏️ แก้ไขโรงแรม'; document.getElementById('btn-cancel-h').style.display = 'inline-block'; }
-    function resetHotelForm() { document.getElementById('edit-h-id').value = ''; document.getElementById('h-title').innerText = '➕ เพิ่มโรงแรมใหม่'; document.getElementById('btn-cancel-h').style.display = 'none'; }
-    
-    async function saveHotel() { 
-        const id = document.getElementById('edit-h-id').value; 
-        const d = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value }; 
-        try { 
-            if(id) await axios.put(`${API_BASE_URL}/hotels/${id}`, d, authHeader); 
-            else await axios.post(`${API_BASE_URL}/hotels`, d, authHeader); 
-            showFlash('สำเร็จ!', 'success'); 
-            resetHotelForm(); 
-            loadData(); 
-        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
-    }
-    
+    function resetHotelForm() { document.getElementById('edit-h-id').value = ''; document.getElementById('h-name').value=''; document.getElementById('h-loc').value=''; document.getElementById('h-rating').value=''; document.getElementById('h-desc').value=''; document.getElementById('h-img').value=''; document.getElementById('h-title').innerText = '➕ เพิ่มโรงแรมใหม่'; document.getElementById('btn-cancel-h').style.display = 'none'; }
+    async function saveHotel() { const id = document.getElementById('edit-h-id').value; const d = { hotel_name: document.getElementById('h-name').value, location: document.getElementById('h-loc').value, rating: document.getElementById('h-rating').value, description: document.getElementById('h-desc').value, image_url: document.getElementById('h-img').value }; try { if(id) await axios.put(`${API_BASE_URL}/hotels/${id}`, d, authHeader); else await axios.post(`${API_BASE_URL}/hotels`, d, authHeader); showFlash('สำเร็จ!', 'success'); resetHotelForm(); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
     async function delHotel(id) { if(confirm('ลบ?')) { try { await axios.delete(`${API_BASE_URL}/hotels/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
-    
     function editRoom(hId, rId) { const r = allData.find(x => x.hotel_id === hId).Rooms.find(x => x.room_id === rId); document.getElementById('edit-r-id').value = rId; document.getElementById('r-hotel').value = hId; document.getElementById('r-name').value = r.room_name; document.getElementById('r-type').value = r.room_type; document.getElementById('r-price').value = r.price_per_night; document.getElementById('r-occ').value = r.max_occupancy; document.getElementById('r-title').innerText = '✏️ แก้ไขห้องพัก'; document.getElementById('btn-cancel-r').style.display = 'inline-block'; }
-    function resetRoomForm() { document.getElementById('edit-r-id').value = ''; document.getElementById('r-title').innerText = '➕ เพิ่มห้องพักใหม่'; document.getElementById('btn-cancel-r').style.display = 'none'; }
-    
-    async function saveRoom() { 
-        const id = document.getElementById('edit-r-id').value; 
-        const d = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value }; 
-        try { 
-            if(id) await axios.put(`${API_BASE_URL}/rooms/${id}`, d, authHeader); 
-            else await axios.post(`${API_BASE_URL}/rooms`, d, authHeader); 
-            showFlash('สำเร็จ!', 'success'); 
-            resetRoomForm(); 
-            loadData(); 
-        } catch (e) { showFlash('ล้มเหลว', 'error'); } 
-    }
-    
+    function resetRoomForm() { document.getElementById('edit-r-id').value = ''; document.getElementById('r-name').value=''; document.getElementById('r-price').value=''; document.getElementById('r-occ').value=''; document.getElementById('r-title').innerText = '➕ เพิ่มห้องพักใหม่'; document.getElementById('btn-cancel-r').style.display = 'none'; }
+    async function saveRoom() { const id = document.getElementById('edit-r-id').value; const d = { hotel_id: document.getElementById('r-hotel').value, room_name: document.getElementById('r-name').value, room_type: document.getElementById('r-type').value, price_per_night: document.getElementById('r-price').value, max_occupancy: document.getElementById('r-occ').value }; try { if(id) await axios.put(`${API_BASE_URL}/rooms/${id}`, d, authHeader); else await axios.post(`${API_BASE_URL}/rooms`, d, authHeader); showFlash('สำเร็จ!', 'success'); resetRoomForm(); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
     async function delRoom(id) { if(confirm('ลบ?')) { try { await axios.delete(`${API_BASE_URL}/rooms/${id}`, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch(e) { showFlash('ล้มเหลว', 'error'); } } }
 
     loadData();
