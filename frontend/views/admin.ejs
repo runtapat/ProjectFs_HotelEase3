@@ -164,7 +164,7 @@
         } catch (e) { console.error(e); }
     }
 
-    // 🌟 ระบบสรุปรายได้แบบละเอียด: Confirmed vs Pending
+    // ระบบสรุปรายได้แบบละเอียด: Confirmed vs Pending
     function renderDashboardAndIncome() {
         const month = document.getElementById('filter-month-db').value;
         const summary = {}; 
@@ -303,8 +303,14 @@
     }
 
     // --- ส่วน CRUD อื่นๆ คงเดิมตามต้นฉบับ ---
-    function renderBookings() { document.getElementById('tb-bookings').innerHTML = bookingData.map(b => { const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled'); return `<tr><td>${b.User.user_id}</td><td style="text-align:left;">${b.User.username}</td><td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small>${b.Room.room_name}</small></td><td>${b.check_in_date}</td><td style="font-weight:bold;">${b.total_amount.toLocaleString()}</td><td><span class="badge ${badge}">${b.status}</span></td><td><div style="display:flex; gap:5px; justify-content:center;"><select id="s-${b.booking_id}" style="padding:5px;" ${b.status==='Cancelled'?'disabled':''}><option value="Pending" ${b.status==='Pending'?'selected':''}>Pending</option><option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>Confirmed</option><option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>Cancelled</option></select><button class="btn-save" onclick="updStat(${b.booking_id})" ${b.status==='Cancelled'?'disabled':''}>บันทึก</button></div></td></tr>`; }).join(''); }
-    async function updStat(id) { try { await axios.put(`${API_BASE_URL}/bookings/${id}`, { status: document.getElementById(`s-${id}`).value }, authHeader); showFlash('สำเร็จ!', 'success'); loadData(); } catch (e) { showFlash('ล้มเหลว', 'error'); } }
+    function renderBookings() { document.getElementById('tb-bookings').innerHTML = bookingData.map
+    (b => { const badge = b.status === 'Pending' ? 'bg-pending' : (b.status === 'Confirmed' ? 'bg-confirmed' : 'bg-cancelled'); 
+    return `<tr><td>${b.User.user_id}</td><td style="text-align:left;">${b.User.username}</td><td style="text-align:left;"><b>${b.Room.Hotel.hotel_name}</b><br><small>${b.Room.room_name}</small></td><td>${b.check_in_date}</td><td style="font-weight:bold;">${b.total_amount.toLocaleString()}</td><td><span class="badge ${badge}">${b.status}</span></td><td><div style="display:flex; gap:5px; justify-content:center;"><select id="s-${b.booking_id}" style="padding:5px;" ${b.status==='Cancelled'?'disabled':''}><option value="Pending" ${b.status==='Pending'?'selected':''}>Pending</option><option value="Confirmed" ${b.status==='Confirmed'?'selected':''}>Confirmed</option><option value="Cancelled" ${b.status==='Cancelled'?'selected':''}>Cancelled</option></select><button class="btn-save" onclick="updStat(${b.booking_id})" ${b.status==='Cancelled'?'disabled':''}>บันทึก</button></div></td></tr>`; }).join(''); }
+    async function updStat(id) { try { await axios.put(`${API_BASE_URL}/bookings/${id}`, 
+    { status: document.getElementById(`s-${id}`).value }, authHeader); 
+    showFlash('สำเร็จ!', 'success'); 
+    loadData(); 
+} catch (e) { showFlash('ล้มเหลว', 'error'); } }
     function renderRooms() {
         const filterId = document.getElementById('filter-hotel').value;
         let html = '';

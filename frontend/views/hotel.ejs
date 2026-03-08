@@ -7,23 +7,27 @@
 </div>
 
 <script>
-    // 🌟 ดึงค่า PORT จาก Server ผ่าน EJS Variable
+    // --- [ส่วนที่ 1: การตั้งค่า API และดึงพารามิเตอร์จาก URL] ---
+    // ดึงค่า PORT จาก Server ผ่าน EJS Variable เพื่อใช้ต่อกับ Backend
     const API_PORT = "<%= apiPort %>"; 
     const API_BASE_URL = `http://localhost:${API_PORT}/api/hotels`;
 
+    // ดึงข้อมูลรหัสโรงแรมและวันที่เลือกมาจากหน้าแรก (Query Strings)
     const q = new URLSearchParams(window.location.search);
     const hotelId = q.get('id');
     let checkIn = q.get('in') || '';
     let checkOut = q.get('out') || '';
-    let allRooms = []; 
+    let allRooms = []; // ตัวแปรเก็บข้อมูลห้องพักทั้งหมดของโรงแรมนี้
 
+    // --- [ส่วนที่ 2: ฟังก์ชันหลักในการดึงข้อมูลโรงแรม] ---
     async function loadHotel() {
         try {
-            // 🌟 เปลี่ยน URL เป็นตัวแปร API_BASE_URL และส่งวันที่ไปให้ Backend
+            // ส่งรหัสโรงแรมพร้อมวันที่เข้าพัก/วันออก ไปให้ Backend เพื่อเช็คห้องว่างจริง
             const res = await axios.get(`${API_BASE_URL}/${hotelId}?check_in=${checkIn}&check_out=${checkOut}`);
             const h = res.data;
-            allRooms = h.Rooms; 
+            allRooms = h.Rooms; // เก็บรายการห้องพักที่ว่างในช่วงเวลานั้น
             
+            // วาดโครงสร้างหน้าจอ: รูปภาพ, ข้อมูลโรงแรม, และส่วนตัวกรองวันที่/ประเภทห้อง
             document.getElementById('content').innerHTML = `
                 <img src="${h.image_url}" style="width:100%; height:400px; object-fit:cover; border-radius:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:20px;">
@@ -59,7 +63,7 @@
                 <div id="rooms-container"></div>
             `;
 
-            // 🌟 ระบบตรวจจับอัตโนมัติ: เมื่อเปลี่ยนวันที่ให้ทำงานทันที
+            // --- [ส่วนที่ 3: ระบบตรวจจับและอัปเดตข้อมูลวันที่อัตโนมัติ] ---
             const inInput = document.getElementById('new-in');
             const outInput = document.getElementById('new-out');
 
@@ -67,33 +71,40 @@
                 const valIn = inInput.value;
                 const valOut = outInput.value;
                 
+                // ตั้งค่าห้ามเลือกวันออกก่อนวันเข้าพัก
                 outInput.min = valIn;
 
                 if (valIn && valOut) {
+                    // ตรวจสอบความถูกต้องของวันที่
                     if (valOut <= valIn) {
                         showFlash('วันเช็คเอาท์ต้องอยู่หลังวันเช็คอินครับ', 'error');
                         return;
                     }
+                    // อัปเดตตัวแปรวันที่และโหลดข้อมูลห้องว่างชุดใหม่จาก Backend ทันที
                     checkIn = valIn;
                     checkOut = valOut;
                     loadHotel(); 
                 }
             };
 
+            // ติดตั้ง Event Listener เมื่อมีการเปลี่ยนวันที่
             inInput.addEventListener('change', autoUpdate);
             outInput.addEventListener('change', autoUpdate);
 
-            renderRooms(); 
+            renderRooms(); // แสดงรายการห้องพักหลังจากโหลดข้อมูลเสร็จ
         } catch (e) {
             console.error(e);
             showFlash('ไม่สามารถโหลดข้อมูลโรงแรมได้', 'error');
         }
     }
 
+    // --- [ส่วนที่ 4: ฟังก์ชันกรองและแสดงผลรายการห้องพัก] ---
     function renderRooms() {
+        // กรองประเภทห้องพักจากข้อมูลที่มีอยู่ (Client-side Filtering)
         const selectedType = document.getElementById('filter-type')?.value || '';
         const filteredRooms = allRooms.filter(r => selectedType === '' || r.room_type === selectedType);
 
+        // วนลูปสร้างการ์ดห้องพัก หรือแสดงข้อความหากไม่มีห้องว่าง
         let roomsHtml = filteredRooms.length ? filteredRooms.map(r => `
             <div class="room-card" style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border: 1px solid #eee;">
                 <div>
@@ -111,15 +122,19 @@
         document.getElementById('rooms-container').innerHTML = roomsHtml;
     }
 
+    // --- [ส่วนที่ 5: ฟังก์ชันนำทางไปยังหน้ายืนยันการจอง] ---
     function bookRoom(roomId, price) {
+        // ตรวจสอบความครบถ้วนของวันที่ก่อนไปหน้าถัดไป
         if(!checkIn || !checkOut) {
             showFlash('กรุณาเลือกวันเข้าพักและวันออกให้ครบก่อนครับ', 'error');
             document.getElementById('new-in').focus();
             return;
         }
+        // ส่งข้อมูลห้องและวันที่ไปที่หน้า /booking ผ่าน URL Parameters
         window.location.href = `/booking?id=${roomId}&price=${price}&in=${checkIn}&out=${checkOut}`;
     }
     
+    // เรียกทำงานครั้งแรกเมื่อโหลดหน้าเว็บ
     loadHotel();
 </script>
 
