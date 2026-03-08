@@ -11,11 +11,11 @@
 </div>
 
 <script>
-    // 🌟 ดึงค่า PORT จาก Server ผ่าน EJS Variable
+    // ดึงค่า PORT จาก Server ผ่าน EJS Variable
     const API_PORT = "<%= apiPort %>"; 
     const MY_BOOKINGS_URL = `http://localhost:${API_PORT}/api/my-bookings`;
 
-    // 🌟 ฟังก์ชันโหลดข้อมูลการจอง (พร้อมระบบป้องกัน Cache)
+    // ฟังก์ชันโหลดข้อมูลการจอง (พร้อมระบบป้องกัน Cache)
     async function loadMyBookings() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -27,7 +27,7 @@
         }
 
         try {
-            // 🌟 ใส่ Cache Busting และเปลี่ยน URL เป็นแบบ Dynamic
+            // ใส่ Cache Busting และเปลี่ยน URL เป็นแบบ Dynamic
             const t = new Date().getTime();
             const res = await axios.get(`${MY_BOOKINGS_URL}?t=${t}`, {
                 headers: { Authorization: `Bearer ${token}` }
